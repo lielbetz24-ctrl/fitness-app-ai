@@ -15,46 +15,53 @@
             <p>התוכנית המותאמת שנוצרה על ידי מנוע ה-AI שלנו במיוחד בשבילך</p>
         </header>
 
-        <section class="profile-summary">
-            <div class="profile-card">
-                <h3>סיכום נתונים אישיים</h3>
-                <div class="metrics-grid" id="user-metrics">
-                    <div class="metric"><span class="label">משקל נוכחי:</span> <strong id="val-weight">-- ק"ג</strong></div>
-                    <div class="metric"><span class="label">היקף מותניים:</span> <strong id="val-waist">-- ס"מ</strong></div>
-                    <div class="metric"><span class="label">ימי אימון בשבוע:</span> <strong id="val-days">--</strong></div>
-                </div>
-                <div class="aesthetic-goal">
-                    <span class="label">המטרה שלך:</span>
-                    <p id="val-goal">טוען נתונים...</p>
-                </div>
+        <nav class="tabs-nav">
+            <button class="tab-btn active" data-target="tab-profile">נתונים אישיים ומטרות</button>
+            <button class="tab-btn" data-target="tab-nutrition">תזונה</button>
+            <button class="tab-btn" data-target="tab-workout">תוכנית אימונים</button>
+        </nav>
+
+        <div class="tabs-content-container">
+            <!-- Profile Tab -->
+            <div id="tab-profile" class="tab-pane active">
+                <section class="profile-summary">
+                    <div class="profile-card">
+                        <h3>סיכום נתונים אישיים</h3>
+                        <div class="metrics-grid" id="user-metrics">
+                            <div class="metric"><span class="label">משקל נוכחי:</span> <strong id="val-weight">-- ק"ג</strong></div>
+                            <div class="metric"><span class="label">היקף מותניים:</span> <strong id="val-waist">-- ס"מ</strong></div>
+                            <div class="metric"><span class="label">ימי אימון בשבוע:</span> <strong id="val-days">--</strong></div>
+                        </div>
+                        <div class="aesthetic-goal">
+                            <span class="label">המטרה שלך:</span>
+                            <p id="val-goal">טוען נתונים...</p>
+                        </div>
+                    </div>
+
+                    <div class="update-card">
+                        <h3>עדכון דו-שבועי הבא</h3>
+                        <div class="timer-display">
+                            <span class="days-left" id="days-left">14</span>
+                            <span class="days-text">ימים נותרו</span>
+                        </div>
+                        <div class="timer-progress-bg">
+                            <div class="timer-progress-fill" id="timer-progress"></div>
+                        </div>
+                        <button id="btn-update" class="btn btn-secondary" disabled>בצע עדכון נתונים (נעול)</button>
+                    </div>
+                </section>
+
+                <!-- AI Feedback Section -->
+                <section id="ai-feedback-section" style="display: none; margin-bottom: 30px;">
+                    <div class="feedback-card" style="background-color: var(--card-bg); border-radius: 16px; padding: 25px; box-shadow: 0 5px 20px rgba(0,0,0,0.3); border-left: 5px solid #3498db;">
+                        <h3 style="color: #3498db; margin-bottom: 10px; font-size: 20px;">🤖 הודעת המאמן (AI) בעקבות העדכון האחרון:</h3>
+                        <p id="val-feedback" style="font-size: 16px; line-height: 1.6;"></p>
+                    </div>
+                </section>
             </div>
 
-            <div class="update-card">
-                <h3>עדכון דו-שבועי הבא</h3>
-                <div class="timer-display">
-                    <span class="days-left" id="days-left">14</span>
-                    <span class="days-text">ימים נותרו</span>
-                </div>
-                <div class="timer-progress-bg">
-                    <div class="timer-progress-fill" id="timer-progress"></div>
-                </div>
-                <button id="btn-update" class="btn btn-secondary" disabled>בצע עדכון נתונים (נעול)</button>
-            </div>
-        </section>
-
-        <!-- AI Feedback Section (Hidden by default) -->
-        <section id="ai-feedback-section" style="display: none; margin-bottom: 30px;">
-            <div class="feedback-card" style="background-color: var(--card-bg); border-radius: 16px; padding: 25px; box-shadow: 0 5px 20px rgba(0,0,0,0.3); border-left: 5px solid #3498db;">
-                <h3 style="color: #3498db; margin-bottom: 10px; font-size: 20px;">🤖 הודעת המאמן (AI) בעקבות העדכון האחרון:</h3>
-                <p id="val-feedback" style="font-size: 16px; line-height: 1.6;"></p>
-            </div>
-        </section>
-
-        <section class="programs-section">
-            <h2>התוכנית השבועית והיומית שלך</h2>
-            <div class="programs-grid">
-                
-                <!-- Nutrition Card -->
+            <!-- Nutrition Tab -->
+            <div id="tab-nutrition" class="tab-pane">
                 <div class="program-card nutrition-card">
                     <div class="card-header">
                         <h3>🍏 תפריט תזונה להיום</h3>
@@ -72,8 +79,10 @@
                         </ul>
                     </div>
                 </div>
+            </div>
 
-                <!-- Workout Card -->
+            <!-- Workout Tab -->
+            <div id="tab-workout" class="tab-pane">
                 <div class="program-card workout-card">
                     <div class="card-header">
                         <h3>💪 תוכנית אימונים מפורטת</h3>
@@ -84,7 +93,7 @@
                     </div>
                 </div>
             </div>
-        </section>
+        </div>
     </div>
 
     <!-- Check-in Modal -->
