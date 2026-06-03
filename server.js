@@ -53,6 +53,7 @@ const userSchema = new mongoose.Schema({
     gender: String,
     nutrition_preferences: mongoose.Schema.Types.Mixed, // e.g. { diet, foodPrefs }
     workout_days_per_week: Number,
+    meals_per_day: Number,
     visual_goals: String,
     created_at: { type: Date, default: Date.now }
 });
@@ -159,6 +160,7 @@ async function generateProgramAI(data) {
     משקל: ${data.weight} ק"ג
     העדפה תזונתית: ${data.diet}
     מאכלים/העדפות (אם צוינו): ${data['food-prefs']}
+    מספר ארוחות רצוי ביום: ${data['meals-per-day']} (חובה לפצל את התפריט למספר ארוחות זה)
     ימי אימון בשבוע: ${data['workout-days']}
     מטרות ויזואליות / רצונות: ${data['visual-goals']}
     
@@ -230,6 +232,7 @@ app.post('/api/onboarding', cpUpload, async (req, res) => {
             gender: data.gender,
             nutrition_preferences: { diet: data.diet, foodPrefs: data['food-prefs'] },
             workout_days_per_week: parseInt(data['workout-days']),
+            meals_per_day: parseInt(data['meals-per-day']),
             visual_goals: data['visual-goals']
         });
         await newUser.save();
