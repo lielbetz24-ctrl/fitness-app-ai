@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>לוח בקרה - אפליקציית כושר ותזונה אישית</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="dashboard.css">
+    <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;600;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="dashboard-container">
+        <header class="dashboard-header">
+            <h1>האזור האישי שלך</h1>
+            <p>התוכנית המותאמת שנוצרה על ידי מנוע ה-AI שלנו במיוחד בשבילך</p>
+        </header>
+
+        <section class="profile-summary">
+            <div class="profile-card">
+                <h3>סיכום נתונים אישיים</h3>
+                <div class="metrics-grid" id="user-metrics">
+                    <div class="metric"><span class="label">משקל נוכחי:</span> <strong id="val-weight">-- ק"ג</strong></div>
+                    <div class="metric"><span class="label">היקף מותניים:</span> <strong id="val-waist">-- ס"מ</strong></div>
+                    <div class="metric"><span class="label">ימי אימון בשבוע:</span> <strong id="val-days">--</strong></div>
+                </div>
+                <div class="aesthetic-goal">
+                    <span class="label">המטרה שלך:</span>
+                    <p id="val-goal">טוען נתונים...</p>
+                </div>
+            </div>
+
+            <div class="update-card">
+                <h3>עדכון דו-שבועי הבא</h3>
+                <div class="timer-display">
+                    <span class="days-left" id="days-left">14</span>
+                    <span class="days-text">ימים נותרו</span>
+                </div>
+                <div class="timer-progress-bg">
+                    <div class="timer-progress-fill" id="timer-progress"></div>
+                </div>
+                <button id="btn-update" class="btn btn-secondary" disabled>בצע עדכון נתונים (נעול)</button>
+            </div>
+        </section>
+
+        <!-- AI Feedback Section (Hidden by default) -->
+        <section id="ai-feedback-section" style="display: none; margin-bottom: 30px;">
+            <div class="feedback-card" style="background-color: var(--card-bg); border-radius: 16px; padding: 25px; box-shadow: 0 5px 20px rgba(0,0,0,0.3); border-left: 5px solid #3498db;">
+                <h3 style="color: #3498db; margin-bottom: 10px; font-size: 20px;">🤖 הודעת המאמן (AI) בעקבות העדכון האחרון:</h3>
+                <p id="val-feedback" style="font-size: 16px; line-height: 1.6;"></p>
+            </div>
+        </section>
+
+        <section class="programs-section">
+            <h2>התוכנית השבועית והיומית שלך</h2>
+            <div class="programs-grid">
+                
+                <!-- Nutrition Card -->
+                <div class="program-card nutrition-card">
+                    <div class="card-header">
+                        <h3>🍏 תפריט תזונה להיום</h3>
+                        <span class="badge" style="background-color: #2ecc71;">מוכן (AI)</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="macro-summary">
+                            <div class="macro"><strong id="val-calories">--</strong> קלוריות</div>
+                            <div class="macro"><strong id="val-protein">--</strong> חלבון</div>
+                            <div class="macro"><strong id="val-carbs">--</strong> פחמימה</div>
+                            <div class="macro"><strong id="val-fats">--</strong> שומן</div>
+                        </div>
+                        <ul class="meal-list" id="menu-list">
+                            <li>טוען תפריט...</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Workout Card -->
+                <div class="program-card workout-card">
+                    <div class="card-header">
+                        <h3>💪 תוכנית אימונים מפורטת</h3>
+                        <span class="badge" style="background-color: #3498db;">מותאם אישית</span>
+                    </div>
+                    <div class="card-body" id="workout-list-container">
+                        <p class="workout-desc">טוען את תוכנית האימונים שלך...</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Check-in Modal -->
+    <div id="checkin-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <h2>עדכון נתונים דו-שבועי</h2>
+            <p>הזן את המדדים העדכניים שלך כדי שה-AI יוכל להתאים עבורך את התוכנית.</p>
+            <form id="checkin-form">
+                <input type="hidden" id="checkin-userId" name="userId">
+                
+                <div class="input-group">
+                    <label for="c-weight">משקל נוכחי (ק"ג)</label>
+                    <input type="number" id="c-weight" name="weight" step="0.1" required>
+                </div>
+
+                <h3>היקפים מעודכנים (ס"מ)</h3>
+                <div class="measurements-grid">
+                    <div class="input-group"><label>מותניים</label><input type="number" name="waist" step="0.1" required></div>
+                    <div class="input-group"><label>כתפיים</label><input type="number" name="shoulders" step="0.1" required></div>
+                    <div class="input-group"><label>ידיים</label><input type="number" name="arms" step="0.1" required></div>
+                    <div class="input-group"><label>ירכיים</label><input type="number" name="thighs" step="0.1" required></div>
+                </div>
+
+                <h3>תחושות במהלך השבועיים האחרונים</h3>
+                <div class="input-group">
+                    <label for="c-feelings">איך הרגשת? (רמת אנרגיה, רעב, קשיי התמדה...)</label>
+                    <textarea id="c-feelings" name="feelings" rows="3" placeholder="למשל: הרגשתי רעב בשעות הערב, אבל סך הכל היה מצוין..."></textarea>
+                </div>
+
+                <h3>תמונות מעודכנות</h3>
+                <div class="image-upload-grid">
+                    <div class="file-upload-wrapper"><label>חזית</label><div class="file-upload-box"><span>העלאה</span><input type="file" name="image-front" accept="image/*"></div></div>
+                    <div class="file-upload-wrapper"><label>גב</label><div class="file-upload-box"><span>העלאה</span><input type="file" name="image-back" accept="image/*"></div></div>
+                    <div class="file-upload-wrapper"><label>צד</label><div class="file-upload-box"><span>העלאה</span><input type="file" name="image-side" accept="image/*"></div></div>
+                </div>
+
+                <div class="wizard-footer" style="margin-top: 20px;">
+                    <button type="button" id="btn-cancel-checkin" class="btn btn-secondary">ביטול</button>
+                    <button type="submit" id="btn-submit-checkin" class="btn btn-primary">שלח עדכון ל-AI</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="dashboard.js"></script>
+</body>
+</html>
