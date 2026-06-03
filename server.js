@@ -4,7 +4,7 @@ const cors = require('cors');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
-const sqlite3 = require('sqlite3').verbose();
+const mongoose = require('mongoose');
 const { GoogleGenAI } = require('@google/genai');
 
 const app = express();
@@ -29,41 +29,66 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage: storage, limits: { fileSize: 10 * 1024 * 1024 } });
 
-// Database Setup
-const dbPath = path.join(__dirname, 'database.sqlite');
-const db = new sqlite3.Database(dbPath, (err) => {
-    if (err) { console.error('Error opening database', err.message); } 
-    else {
-        db.serialize(() => {
-            db.run(`CREATE TABLE IF NOT EXISTS users (
-                id TEXT PRIMARY KEY, age INTEGER, gender TEXT, nutrition_preferences TEXT, workout_days_per_week INTEGER, visual_goals TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-            )`);
-            db.run(`ALTER TABLE users ADD COLUMN age INTEGER`, () => {});
-            db.run(`ALTER TABLE users ADD COLUMN gender TEXT`, () => {});
-
-            db.run(`CREATE TABLE IF NOT EXISTS biweekly_tracking (
-                id TEXT PRIMARY KEY, user_id TEXT, tracking_date DATE, weight REAL, waist_circumference REAL, shoulders_circumference REAL, arms_circumference REAL, thighs_circumference REAL, personal_feelings TEXT, image_front_url TEXT, image_back_url TEXT, image_side_url TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (user_id) REFERENCES users(id)
-            )`);
-            db.run(`ALTER TABLE biweekly_tracking ADD COLUMN personal_feelings TEXT`, () => {});
-
-            db.run(`CREATE TABLE IF NOT EXISTS programs (
-                id TEXT PRIMARY KEY, user_id TEXT, target_calories INTEGER, protein_grams INTEGER, carbs_grams INTEGER, fats_grams INTEGER, daily_menu TEXT, workout_plan TEXT, ai_feedback TEXT, is_active BOOLEAN DEFAULT 1, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (user_id) REFERENCES users(id)
-            )`);
-            db.run(`ALTER TABLE programs ADD COLUMN ai_feedback TEXT`, () => {});
-        });
-    }
-});
-
-function uuidv4() {
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-        var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
-        return v.toString(16);
-    });
+// MongoDB Connection
+const mongoURI = process.env.MONGODB_URI;
+if (!mongoURI) {
+    console.error("CRITICAL ERROR: MONGODB_URI is not defined in .env");
+    process.exit(1);
 }
 
-// AI Functions using @google/genai
-// אנו מאתחלים את ה-SDK בתוך הפונקציה כדי שהשרת לא יקרוס בעלייה במקרה והמשתמש עדיין לא הזין מפתח
+mongoose.connect(mongoURI)
+    .then(() => console.log('Successfully connected to MongoDB.'))
+    .catch(err => {
+        console.error('Error connecting to MongoDB on startup:', err.message);
+        process.exit(1);
+    });
 
+mongoose.connection.on('error', err => {
+    console.error('MongoDB connection lost/error:', err.message);
+});
+
+// Mongoose Schemas (Dynamic & Flexible)
+const userSchema = new mongoose.Schema({
+    age: Number,
+    gender: String,
+    nutrition_preferences: mongoose.Schema.Types.Mixed, // e.g. { diet, foodPrefs }
+    workout_days_per_week: Number,
+    visual_goals: String,
+    created_at: { type: Date, default: Date.now }
+});
+const User = mongoose.model('User', userSchema);
+
+const biweeklyTrackingSchema = new mongoose.Schema({
+    user_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    tracking_date: { type: Date, default: Date.now },
+    weight: Number,
+    waist_circumference: Number,
+    shoulders_circumference: Number,
+    arms_circumference: Number,
+    thighs_circumference: Number,
+    personal_feelings: String,
+    image_front_url: String,
+    image_back_url: String,
+    image_side_url: String,
+    created_at: { type: Date, default: Date.now }
+});
+const BiweeklyTracking = mongoose.model('BiweeklyTracking', biweeklyTrackingSchema);
+
+const programSchema = new mongoose.Schema({
+    user_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    target_calories: Number,
+    protein_grams: Number,
+    carbs_grams: Number,
+    fats_grams: Number,
+    daily_menu: mongoose.Schema.Types.Mixed,    // Saves the JSON array natively
+    workout_plan: mongoose.Schema.Types.Mixed,  // Saves the JSON array natively
+    ai_feedback: String,
+    is_active: { type: Boolean, default: true },
+    created_at: { type: Date, default: Date.now }
+});
+const Program = mongoose.model('Program', programSchema);
+
+// AI Functions using @google/genai
 async function callGemini(systemInstruction, userPrompt) {
     if (!process.env.GEMINI_API_KEY) {
         throw new Error('חסר מפתח API. אנא עדכן את קובץ ה-.env עם מפתח תקין.');
@@ -163,7 +188,7 @@ async function generateCheckinAI(oldProgram, newTracking, feelings) {
     const userPrompt = `
     נתוני תוכנית קודמת:
     קלוריות: ${oldProgram.target_calories}
-    תפריט קודם (JSON חלקי): ${oldProgram.daily_menu.substring(0, 300)}...
+    תפריט קודם (JSON חלקי): ${JSON.stringify(oldProgram.daily_menu).substring(0, 300)}...
     
     נתונים מהשבועיים האחרונים:
     משקל נוכחי: ${newTracking.weight} ק"ג
@@ -188,7 +213,7 @@ app.post('/api/onboarding', cpUpload, async (req, res) => {
             return res.status(400).json({ error: 'חסרים נתונים חובה.' });
         }
 
-        // Call AI FIRST before touching DB, allowing graceful rollback/rejection
+        // Call AI FIRST before touching DB, allowing graceful rejection
         let aiProgram;
         try {
             aiProgram = await generateProgramAI(data);
@@ -196,54 +221,47 @@ app.post('/api/onboarding', cpUpload, async (req, res) => {
             return res.status(500).json({ error: e.message });
         }
 
-        const imageFrontUrl = files['image-front'] ? `/uploads/${files['image-front'][0].filename}` : null;
-        const imageBackUrl = files['image-back'] ? `/uploads/${files['image-back'][0].filename}` : null;
-        const imageSideUrl = files['image-side'] ? `/uploads/${files['image-side'][0].filename}` : null;
+        const imageFrontUrl = files['image-front'] ? \`/uploads/\${files['image-front'][0].filename}\` : null;
+        const imageBackUrl = files['image-back'] ? \`/uploads/\${files['image-back'][0].filename}\` : null;
+        const imageSideUrl = files['image-side'] ? \`/uploads/\${files['image-side'][0].filename}\` : null;
 
-        const userId = uuidv4();
-        const nutritionPreferences = JSON.stringify({ diet: data.diet, foodPrefs: data['food-prefs'] });
-
-        db.serialize(() => {
-            db.run("BEGIN TRANSACTION");
-
-            db.run(`INSERT INTO users (id, age, gender, nutrition_preferences, workout_days_per_week, visual_goals) VALUES (?, ?, ?, ?, ?, ?)`, 
-            [userId, parseInt(data.age), data.gender, nutritionPreferences, parseInt(data['workout-days']), data['visual-goals']], 
-            function(err) {
-                if (err) { db.run("ROLLBACK"); return res.status(500).json({ error: 'שגיאה בשמירת פרטי המשתמש.' }); }
-
-                const trackingId = uuidv4();
-                db.run(`INSERT INTO biweekly_tracking (
-                    id, user_id, tracking_date, weight, waist_circumference, shoulders_circumference, arms_circumference, thighs_circumference, image_front_url, image_back_url, image_side_url
-                ) VALUES (?, ?, date('now'), ?, ?, ?, ?, ?, ?, ?, ?)`, 
-                [
-                    trackingId, userId, 
-                    parseFloat(data.weight), parseFloat(data.waist), parseFloat(data.shoulders), parseFloat(data.arms), parseFloat(data.thighs),
-                    imageFrontUrl, imageBackUrl, imageSideUrl
-                ],
-                function(err) {
-                    if (err) { db.run("ROLLBACK"); return res.status(500).json({ error: 'שגיאה בשמירת נתוני המעקב.' }); }
-
-                    const programId = uuidv4();
-                    db.run(`INSERT INTO programs (
-                        id, user_id, target_calories, protein_grams, carbs_grams, fats_grams, daily_menu, workout_plan
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-                    [
-                        programId, userId,
-                        aiProgram.targetCalories, aiProgram.proteinGrams, aiProgram.carbsGrams, aiProgram.fatsGrams,
-                        JSON.stringify(aiProgram.dailyMenu), JSON.stringify(aiProgram.workoutPlan)
-                    ],
-                    function(err) {
-                        if (err) { db.run("ROLLBACK"); return res.status(500).json({ error: 'שגיאה ביצירת התוכנית.' }); }
-                        
-                        db.run("COMMIT");
-                        return res.status(200).json({ message: 'הנתונים נשמרו בהצלחה', userId: userId });
-                    });
-                });
-            });
+        const newUser = new User({
+            age: parseInt(data.age),
+            gender: data.gender,
+            nutrition_preferences: { diet: data.diet, foodPrefs: data['food-prefs'] },
+            workout_days_per_week: parseInt(data['workout-days']),
+            visual_goals: data['visual-goals']
         });
+        await newUser.save();
+
+        const newTracking = new BiweeklyTracking({
+            user_id: newUser._id,
+            weight: parseFloat(data.weight),
+            waist_circumference: parseFloat(data.waist),
+            shoulders_circumference: parseFloat(data.shoulders),
+            arms_circumference: parseFloat(data.arms),
+            thighs_circumference: parseFloat(data.thighs),
+            image_front_url: imageFrontUrl,
+            image_back_url: imageBackUrl,
+            image_side_url: imageSideUrl
+        });
+        await newTracking.save();
+
+        const newProgram = new Program({
+            user_id: newUser._id,
+            target_calories: aiProgram.targetCalories,
+            protein_grams: aiProgram.proteinGrams,
+            carbs_grams: aiProgram.carbsGrams,
+            fats_grams: aiProgram.fatsGrams,
+            daily_menu: aiProgram.dailyMenu, // Saved natively as JSON due to Mixed type
+            workout_plan: aiProgram.workoutPlan // Saved natively as JSON due to Mixed type
+        });
+        await newProgram.save();
+
+        return res.status(200).json({ message: 'הנתונים נשמרו בהצלחה', userId: newUser._id.toString() });
     } catch (error) {
-        console.error("Server error:", error);
-        res.status(500).json({ error: 'שגיאת שרת פנימית.' });
+        console.error("Server error during onboarding:", error);
+        res.status(500).json({ error: 'שגיאת שרת פנימית. נסה שוב.' });
     }
 });
 
@@ -258,93 +276,99 @@ app.post('/api/checkin', cpUpload, async (req, res) => {
         }
 
         // Fetch Old Program First
-        db.get(`SELECT * FROM programs WHERE user_id = ? AND is_active = 1`, [userId], async (err, oldProgram) => {
-            if (err || !oldProgram) {
-                return res.status(500).json({ error: 'תוכנית קודמת לא נמצאה: ' + (err ? err.message : '') });
-            }
+        const oldProgram = await Program.findOne({ user_id: userId, is_active: true });
+        if (!oldProgram) {
+            return res.status(404).json({ error: 'תוכנית קודמת לא נמצאה.' });
+        }
 
-            // Call AI BEFORE opening transaction
-            let aiCheckin;
-            try {
-                aiCheckin = await generateCheckinAI(oldProgram, { weight: parseFloat(data.weight) }, data.feelings);
-            } catch (e) {
-                return res.status(500).json({ error: e.message });
-            }
+        // Call AI BEFORE touching DB
+        let aiCheckin;
+        try {
+            aiCheckin = await generateCheckinAI(oldProgram, { weight: parseFloat(data.weight) }, data.feelings);
+        } catch (e) {
+            return res.status(500).json({ error: e.message });
+        }
 
-            const imageFrontUrl = files['image-front'] ? `/uploads/${files['image-front'][0].filename}` : null;
-            const imageBackUrl = files['image-back'] ? `/uploads/${files['image-back'][0].filename}` : null;
-            const imageSideUrl = files['image-side'] ? `/uploads/${files['image-side'][0].filename}` : null;
+        const imageFrontUrl = files['image-front'] ? \`/uploads/\${files['image-front'][0].filename}\` : null;
+        const imageBackUrl = files['image-back'] ? \`/uploads/\${files['image-back'][0].filename}\` : null;
+        const imageSideUrl = files['image-side'] ? \`/uploads/\${files['image-side'][0].filename}\` : null;
 
-            db.serialize(() => {
-                db.run("BEGIN TRANSACTION");
-
-                const trackingId = uuidv4();
-                db.run(`INSERT INTO biweekly_tracking (
-                    id, user_id, tracking_date, weight, waist_circumference, shoulders_circumference, arms_circumference, thighs_circumference, personal_feelings, image_front_url, image_back_url, image_side_url
-                ) VALUES (?, ?, date('now'), ?, ?, ?, ?, ?, ?, ?, ?, ?)`, 
-                [
-                    trackingId, userId, 
-                    parseFloat(data.weight), parseFloat(data.waist), parseFloat(data.shoulders), parseFloat(data.arms), parseFloat(data.thighs),
-                    data.feelings || '', imageFrontUrl, imageBackUrl, imageSideUrl
-                ], 
-                function(err) {
-                    if (err) { db.run("ROLLBACK"); return res.status(500).json({ error: 'שגיאה בשמירת נתוני המעקב: ' + err.message }); }
-
-                    // Deactivate old program
-                    db.run(`UPDATE programs SET is_active = 0 WHERE id = ?`, [oldProgram.id], (err) => {
-                        if (err) { db.run("ROLLBACK"); return res.status(500).json({ error: 'שגיאה בעדכון התוכנית הקודמת.' }); }
-
-                        // Insert new program
-                        const newProgramId = uuidv4();
-                        db.run(`INSERT INTO programs (
-                            id, user_id, target_calories, protein_grams, carbs_grams, fats_grams, daily_menu, workout_plan, ai_feedback
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                        [
-                            newProgramId, userId,
-                            aiCheckin.targetCalories, aiCheckin.proteinGrams, aiCheckin.carbsGrams, aiCheckin.fatsGrams,
-                            JSON.stringify(aiCheckin.dailyMenu), JSON.stringify(aiCheckin.workoutPlan), aiCheckin.ai_feedback
-                        ],
-                        function(err) {
-                            if (err) { db.run("ROLLBACK"); return res.status(500).json({ error: 'שגיאה ביצירת התוכנית החדשה.' }); }
-                            
-                            db.run("COMMIT");
-                            return res.status(200).json({ message: 'העדכון בוצע בהצלחה!', userId: userId });
-                        });
-                    });
-                });
-            });
+        const newTracking = new BiweeklyTracking({
+            user_id: userId,
+            weight: parseFloat(data.weight),
+            waist_circumference: parseFloat(data.waist),
+            shoulders_circumference: parseFloat(data.shoulders),
+            arms_circumference: parseFloat(data.arms),
+            thighs_circumference: parseFloat(data.thighs),
+            personal_feelings: data.feelings || '',
+            image_front_url: imageFrontUrl,
+            image_back_url: imageBackUrl,
+            image_side_url: imageSideUrl
         });
+        await newTracking.save();
+
+        // Deactivate old program
+        oldProgram.is_active = false;
+        await oldProgram.save();
+
+        // Insert new program
+        const newProgram = new Program({
+            user_id: userId,
+            target_calories: aiCheckin.targetCalories,
+            protein_grams: aiCheckin.proteinGrams,
+            carbs_grams: aiCheckin.carbsGrams,
+            fats_grams: aiCheckin.fatsGrams,
+            daily_menu: aiCheckin.dailyMenu,
+            workout_plan: aiCheckin.workoutPlan,
+            ai_feedback: aiCheckin.ai_feedback
+        });
+        await newProgram.save();
+
+        return res.status(200).json({ message: 'העדכון בוצע בהצלחה!', userId: userId });
     } catch (error) {
-        console.error("Server error:", error);
-        res.status(500).json({ error: 'שגיאת שרת פנימית.' });
+        console.error("Server error during checkin:", error);
+        res.status(500).json({ error: 'שגיאת שרת פנימית. נסה שוב.' });
     }
 });
 
-app.get('/api/user/:id', (req, res) => {
-    const userId = req.params.id;
-    
-    const query = `
-        SELECT u.id, u.visual_goals, u.workout_days_per_week,
-               t.weight, t.waist_circumference, t.tracking_date,
-               p.target_calories, p.protein_grams, p.carbs_grams, p.fats_grams, p.daily_menu, p.workout_plan, p.ai_feedback
-        FROM users u
-        LEFT JOIN biweekly_tracking t ON u.id = t.user_id
-        LEFT JOIN programs p ON u.id = p.user_id AND p.is_active = 1
-        WHERE u.id = ?
-        ORDER BY t.created_at DESC
-        LIMIT 1
-    `;
-    
-    db.get(query, [userId], (err, row) => {
-        if (err) { return res.status(500).json({ error: 'שגיאה בשליפת נתוני המשתמש.' }); }
-        if (!row) { return res.status(404).json({ error: 'משתמש לא נמצא.' }); }
-        res.json(row);
-    });
+app.get('/api/user/:id', async (req, res) => {
+    try {
+        const userId = req.params.id;
+        
+        const user = await User.findById(userId);
+        if (!user) { return res.status(404).json({ error: 'משתמש לא נמצא.' }); }
+        
+        const tracking = await BiweeklyTracking.findOne({ user_id: userId }).sort({ created_at: -1 });
+        const program = await Program.findOne({ user_id: userId, is_active: true });
+        
+        const result = {
+            id: user._id.toString(), // Map _id to id for frontend compatibility
+            visual_goals: user.visual_goals,
+            workout_days_per_week: user.workout_days_per_week,
+            weight: tracking ? tracking.weight : null,
+            waist_circumference: tracking ? tracking.waist_circumference : null,
+            tracking_date: tracking ? tracking.tracking_date : null,
+            target_calories: program ? program.target_calories : null,
+            protein_grams: program ? program.protein_grams : null,
+            carbs_grams: program ? program.carbs_grams : null,
+            fats_grams: program ? program.fats_grams : null,
+            // JSON stringify the daily_menu and workout_plan because the frontend dashboard.js uses JSON.parse() on them!
+            // We stringify it here so the frontend API remains perfectly unchanged.
+            daily_menu: program && program.daily_menu ? JSON.stringify(program.daily_menu) : null,
+            workout_plan: program && program.workout_plan ? JSON.stringify(program.workout_plan) : null,
+            ai_feedback: program ? program.ai_feedback : null
+        };
+        
+        res.json(result);
+    } catch (error) {
+        console.error("Server error fetching user:", error);
+        res.status(500).json({ error: 'שגיאה בשליפת נתוני המשתמש.' });
+    }
 });
 
 app.use('/uploads', express.static(uploadDir));
 app.use(express.static(path.join(__dirname)));
 
 app.listen(PORT, () => {
-    console.log(`Server is running on http://localhost:${PORT}`);
+    console.log(\`Server is running on http://localhost:\${PORT}\`);
 });
