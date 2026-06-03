@@ -188,10 +188,11 @@ async function generateProgramAI(data) {
     return await callGemini(systemPrompt, userPrompt);
 }
 
-async function generateCheckinAI(oldProgram, newTracking, feelings) {
+async function generateCheckinAI(oldProgram, newTracking, feelings, workoutLogs = []) {
     const systemPrompt = `
     אתה תזונאי קליני ומאמן כושר מקצועי שעוקב אחר מתאמן.
     קבל את נתוני העבר, המשקל החדש ותחושות המתאמן בשבועיים האחרונים.
+    להלן היסטוריית האימונים האחרונה של המתאמן. עליך להפיק את תוכנית האימון החדשה תוך יישום קפדני של Progressive Overload (עומס יסף) בהתבסס על נתונים אלו. עבור תרגילים מורכבים, דרוש הוספה של 1.25 עד 2.5 ק"ג למשקל העבודה לעומת השבוע שעבר, או הוספת חזרה אחת לכל סט באותו המשקל. ודא שתוכנית האימון החדשה מציגה את משקלי היעד המדויקים שעל המתאמן להרים.
     עליך לספק פידבק מקצועי קצר ומעודד (בעברית), ולעדכן את הקלוריות והתוכנית בהתאם.
     החזר אך ורק אובייקט JSON בתבנית הבאה:
     {
@@ -217,6 +218,9 @@ async function generateCheckinAI(oldProgram, newTracking, feelings) {
     נתונים מהשבועיים האחרונים:
     משקל נוכחי: ${newTracking.weight} ק"ג
     תחושות / הערות המתאמן: ${feelings || 'אין הערות'}
+    
+    היסטוריית ביצועי אימונים קודמים (Progressive Overload):
+    ${workoutLogs && workoutLogs.length > 0 ? JSON.stringify(workoutLogs) : 'אין נתוני אימונים מתועדים קודמים.'}
     
     אנא עדכן את התוכנית, הוסף משוב אישי, והחזר כ-JSON בלבד.
     `;
@@ -310,7 +314,12 @@ app.post('/api/checkin', cpUpload, async (req, res) => {
         // Call AI BEFORE touching DB
         let aiCheckin;
         try {
-            aiCheckin = await generateCheckinAI(oldProgram, { weight: parseFloat(data.weight) }, data.feelings);
+            aiCheckin = await generateCheckinAI(
+                oldProgram, 
+                { weight: parseFloat(data.weight) }, 
+                data.feelings, 
+                oldProgram.workout_logs || []
+            );
         } catch (e) {
             return res.status(500).json({ error: e.message });
         }
