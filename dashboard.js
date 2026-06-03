@@ -115,6 +115,18 @@ document.addEventListener('DOMContentLoaded', async () => {
                     }
                 }
 
+                // Parse and render Cardio & NEAT
+                if (data.cardio_and_neat) {
+                    try {
+                        const cardioObj = JSON.parse(data.cardio_and_neat);
+                        document.getElementById('cardio-card').style.display = 'block';
+                        document.getElementById('val-steps').textContent = cardioObj.dailyStepsTarget || '--';
+                        document.getElementById('val-cardio-desc').textContent = cardioObj.weeklyCardio || '--';
+                    } catch (e) {
+                        console.error('Failed to parse cardio and neat', e);
+                    }
+                }
+
             }
         } catch (error) {
             console.error('Network error', error);

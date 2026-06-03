@@ -83,6 +83,7 @@ const programSchema = new mongoose.Schema({
     fats_grams: Number,
     daily_menu: mongoose.Schema.Types.Mixed,    // Saves the JSON array natively
     workout_plan: mongoose.Schema.Types.Mixed,  // Saves the JSON array natively
+    cardio_and_neat: mongoose.Schema.Types.Mixed,
     ai_feedback: String,
     is_active: { type: Boolean, default: true },
     created_at: { type: Date, default: Date.now }
@@ -131,23 +132,39 @@ async function callGemini(systemInstruction, userPrompt) {
 
 async function generateProgramAI(data) {
     const systemPrompt = `
-    אתה תזונאי קליני ומאמן כושר מקצועי.
-    תפקידך לייצר תוכנית תזונה ואימונים מותאמת אישית מפורטת בעברית.
+    אתה תזונאי קליני ומאמן כושר מקצועי ברמת עלית.
+    תפקידך לייצר תוכנית תזונה ואימונים מותאמת אישית, מפורטת ומדויקת בעברית.
     עליך להחזיר אך ורק אובייקט JSON תקין (ללא כל Markdown וללא שום טקסט מילולי לפני או אחרי האובייקט).
-    האובייקט חייב לכלול בדיוק את המפתחות הבאים:
+    
+    חוקי תזונה מוחלטים:
+    1. חובה להשתמש אך ורק במידות משקל (גרמים) עבור כל פריט מזון (למשל: 150g חזה עוף, 200g אורז). איסור מוחלט על שימוש במידות נפח או כמות (כוסות, כפות, פרוסות).
+    2. הדיוק הקלורי חייב להיות מתמטי ולהיגזר ישירות מהגרמים של המאקרו-נוטריאנטים (פחמימה/חלבון = 4 קק"ל, שומן = 9 קק"ל).
+    3. חובה לחלק את סך הקלוריות והמאקרו במדויק על פני מספר הארוחות הספציפי שהמשתמש ביקש.
+    4. שלב המלצות למתכוני כושר פרקטיים המותאמים למכשירי מטבח מודרניים (כגון שימוש ב-Airfryer לארוחות מהירות או Ninja Creami לקינוחי חלבון).
+    
+    חוקי אימון מוחלטים:
+    1. כל אימון חייב להתחיל בסעיף של 'חימום מפרקי דינמי וספציפי' המכין את קבוצות השרירים המיועדות לאותו יום.
+    2. סדר התרגילים חייב להיות אנליטי: תמיד להתחיל בתרגילים מורכבים כבדים (Squat, Deadlift, Bench Press וכו'), לעבור לתרגילים מורכבים משניים, ורק בסוף לבצע תרגילי בידוד (Isolation). 
+    3. חובה לשלב הנחיות ליישום Progressive Overload בתרגילים המורכבים.
+    
+    מבנה ה-JSON המחייב:
     {
         "targetCalories": <מספר>,
         "proteinGrams": <מספר>,
         "carbsGrams": <מספר>,
         "fatsGrams": <מספר>,
         "dailyMenu": [
-            { "meal": "שם הארוחה (למשל: ארוחת בוקר)", "items": "פירוט המרכיבים והמנות" }
+            { "meal": "שם הארוחה (חייב להתאים למספר הארוחות המבוקש)", "items": "פירוט המרכיבים בגרמים בלבד והמלצות" }
         ],
         "workoutPlan": [
-            { "day": "שם היום (למשל: יום 1)", "title": "כותרת האימון", "exercises": [
-                { "name": "שם התרגיל", "details": "פרטי התרגיל, סטים וחזרות" }
+            { "day": "שם היום", "title": "כותרת האימון", "exercises": [
+                { "name": "שם התרגיל (למשל חימום מפרקי / סקוואט)", "details": "פרטי התרגיל, סטים, חזרות, והנחיות Progressive Overload" }
             ]}
-        ]
+        ],
+        "cardioAndNeat": {
+            "dailyStepsTarget": <מספר יעד צעדים יומי מדויק>,
+            "weeklyCardio": "הנחיות לאימון אירובי שבועי: עצימות, משך וסוג"
+        }
     }
     חשב את ה-BMR באמצעות נוסחת Mifflin-St Jeor והתאם את הקלוריות ויחסי המאקרו לפי המטרות וההעדפות שהוזנו.
     `;
@@ -182,8 +199,12 @@ async function generateCheckinAI(oldProgram, newTracking, feelings) {
         "proteinGrams": <מספר>,
         "carbsGrams": <מספר>,
         "fatsGrams": <מספר>,
-        "dailyMenu": [ ...מערך ארוחות מעודכן או זהה... ],
-        "workoutPlan": [ ...מערך אימונים... ]
+        "dailyMenu": [ ...מערך ארוחות מעודכן או זהה (חייב להקפיד על הדיוק בגרמים כמו הקודם)... ],
+        "workoutPlan": [ ...מערך אימונים עם חימום דינמי ו-Progressive overload... ],
+        "cardioAndNeat": {
+            "dailyStepsTarget": <מספר יעד צעדים יומי מדויק>,
+            "weeklyCardio": "הנחיות לאימון אירובי שבועי: עצימות, משך וסוג"
+        }
     }
     `;
 
@@ -257,7 +278,8 @@ app.post('/api/onboarding', cpUpload, async (req, res) => {
             carbs_grams: aiProgram.carbsGrams,
             fats_grams: aiProgram.fatsGrams,
             daily_menu: aiProgram.dailyMenu, // Saved natively as JSON due to Mixed type
-            workout_plan: aiProgram.workoutPlan // Saved natively as JSON due to Mixed type
+            workout_plan: aiProgram.workoutPlan, // Saved natively as JSON due to Mixed type
+            cardio_and_neat: aiProgram.cardioAndNeat
         });
         await newProgram.save();
 
@@ -323,6 +345,7 @@ app.post('/api/checkin', cpUpload, async (req, res) => {
             fats_grams: aiCheckin.fatsGrams,
             daily_menu: aiCheckin.dailyMenu,
             workout_plan: aiCheckin.workoutPlan,
+            cardio_and_neat: aiCheckin.cardioAndNeat,
             ai_feedback: aiCheckin.ai_feedback
         });
         await newProgram.save();
@@ -359,6 +382,7 @@ app.get('/api/user/:id', async (req, res) => {
             // We stringify it here so the frontend API remains perfectly unchanged.
             daily_menu: program && program.daily_menu ? JSON.stringify(program.daily_menu) : null,
             workout_plan: program && program.workout_plan ? JSON.stringify(program.workout_plan) : null,
+            cardio_and_neat: program && program.cardio_and_neat ? JSON.stringify(program.cardio_and_neat) : null,
             ai_feedback: program ? program.ai_feedback : null
         };
         
