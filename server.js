@@ -84,6 +84,7 @@ const programSchema = new mongoose.Schema({
     daily_menu: mongoose.Schema.Types.Mixed,    // Saves the JSON array natively
     workout_plan: mongoose.Schema.Types.Mixed,  // Saves the JSON array natively
     cardio_and_neat: mongoose.Schema.Types.Mixed,
+    workout_logs: [mongoose.Schema.Types.Mixed], // Progressive Overload tracking
     ai_feedback: String,
     is_active: { type: Boolean, default: true },
     created_at: { type: Date, default: Date.now }
@@ -354,6 +355,40 @@ app.post('/api/checkin', cpUpload, async (req, res) => {
     } catch (error) {
         console.error("Server error during checkin:", error);
         res.status(500).json({ error: 'שגיאת שרת פנימית. נסה שוב.' });
+    }
+});
+
+app.post('/api/log-workout', async (req, res) => {
+    try {
+        const { userId, workoutData } = req.body;
+        
+        if (!userId || !workoutData) {
+            return res.status(400).json({ error: 'חסרים מזהה משתמש או נתוני אימון.' });
+        }
+
+        // מוצאים את התוכנית הפעילה של המשתמש
+        const activeProgram = await Program.findOne({ user_id: userId, is_active: true });
+        if (!activeProgram) {
+            return res.status(404).json({ error: 'לא נמצאה תוכנית אימון פעילה עבור משתמש זה.' });
+        }
+
+        // וידוא שהמערך קיים
+        if (!activeProgram.workout_logs) {
+            activeProgram.workout_logs = [];
+        }
+
+        // הוספת נתוני האימון המעורבים (תאריך, תרגיל, סטים, חזרות, משקל) למערך
+        activeProgram.workout_logs.push(workoutData);
+        
+        // ציון מפורש ששדה Mixed עבר עדכון כדי להבטיח שמירה נכונה ב-Mongoose
+        activeProgram.markModified('workout_logs');
+        
+        await activeProgram.save();
+
+        return res.status(200).json({ message: 'אימון תועד ונשמר בהצלחה!' });
+    } catch (error) {
+        console.error("CRITICAL ERROR: Failed to log workout for progressive overload:", error);
+        return res.status(500).json({ error: 'שגיאה פנימית בשרת בעת ניסיון לשמור את נתוני האימון.' });
     }
 });
 
