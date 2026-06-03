@@ -305,15 +305,27 @@
     display: block;
 }
 
-/* Exercise Tracking Inputs */
-.exercise-tracking {
+/* Exercise Tracking Inputs (Per-Set) */
+.exercise-tracking-container {
+    margin-top: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.exercise-set-row {
     display: flex;
     gap: 10px;
-    margin-top: 10px;
     align-items: center;
 }
 
-.exercise-tracking input {
+.set-label {
+    font-size: 13px;
+    min-width: 45px;
+    color: var(--text-secondary);
+}
+
+.exercise-set-row input {
     width: 80px;
     padding: 8px;
     border-radius: 4px;

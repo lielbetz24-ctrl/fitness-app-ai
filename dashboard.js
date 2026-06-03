@@ -111,14 +111,31 @@ document.addEventListener('DOMContentLoaded', async () => {
                                 const li = document.createElement('li');
                                 li.innerHTML = `<strong>${ex.name}:</strong> ${ex.details}`;
                                 
-                                // Exercise Tracking Inputs
+                                // Parse sets count from ex.details
+                                let setsCount = 3; // Default
+                                const setMatchHebrew = ex.details.match(/(\d+)\s*סטים/);
+                                const setMatchX = ex.details.match(/(\d+)\s*(X|x)/);
+                                if (setMatchHebrew && parseInt(setMatchHebrew[1]) > 0 && parseInt(setMatchHebrew[1]) <= 10) {
+                                    setsCount = parseInt(setMatchHebrew[1]);
+                                } else if (setMatchX && parseInt(setMatchX[1]) > 0 && parseInt(setMatchX[1]) <= 10) {
+                                    setsCount = parseInt(setMatchX[1]);
+                                }
+                                
                                 const trackingDiv = document.createElement('div');
-                                trackingDiv.className = 'exercise-tracking';
-                                trackingDiv.innerHTML = `
-                                    <input type="hidden" class="ex-name" value="${ex.name}">
-                                    <input type="number" class="ex-weight" placeholder="משקל (KG)" step="0.5" min="0">
-                                    <input type="number" class="ex-reps" placeholder="חזרות" min="0">
-                                `;
+                                trackingDiv.className = 'exercise-tracking-container';
+                                trackingDiv.dataset.exName = ex.name;
+                                
+                                for (let s = 1; s <= setsCount; s++) {
+                                    const setRow = document.createElement('div');
+                                    setRow.className = 'exercise-set-row';
+                                    setRow.innerHTML = `
+                                        <span class="set-label">סט ${s}:</span>
+                                        <input type="number" class="set-weight" placeholder="משקל (KG)" step="0.5" min="0">
+                                        <input type="number" class="set-reps" placeholder="חזרות" min="0">
+                                    `;
+                                    trackingDiv.appendChild(setRow);
+                                }
+                                
                                 li.appendChild(trackingDiv);
                                 exList.appendChild(li);
                             });
@@ -129,25 +146,34 @@ document.addEventListener('DOMContentLoaded', async () => {
                             saveBtn.className = 'btn-log-workout';
                             saveBtn.textContent = 'סיים אימון ושמור נתונים';
                             saveBtn.addEventListener('click', async () => {
-                                const trackingDivs = dayBlock.querySelectorAll('.exercise-tracking');
+                                const trackingContainers = dayBlock.querySelectorAll('.exercise-tracking-container');
                                 const exercisesLogged = [];
-                                trackingDivs.forEach(div => {
-                                    const name = div.querySelector('.ex-name').value;
-                                    const weight = div.querySelector('.ex-weight').value;
-                                    const reps = div.querySelector('.ex-reps').value;
+                                
+                                trackingContainers.forEach(container => {
+                                    const name = container.dataset.exName;
+                                    const setRows = container.querySelectorAll('.exercise-set-row');
+                                    const setsData = [];
                                     
-                                    // Log if they entered either weight or reps
-                                    if (weight || reps) {
-                                        exercisesLogged.push({ 
-                                            name, 
-                                            weight: parseFloat(weight) || 0, 
-                                            reps: parseInt(reps) || 0 
-                                        });
+                                    setRows.forEach((row, index) => {
+                                        const weight = row.querySelector('.set-weight').value;
+                                        const reps = row.querySelector('.set-reps').value;
+                                        
+                                        if (weight || reps) {
+                                            setsData.push({
+                                                setNum: index + 1,
+                                                weight: parseFloat(weight) || 0,
+                                                reps: parseInt(reps) || 0
+                                            });
+                                        }
+                                    });
+                                    
+                                    if (setsData.length > 0) {
+                                        exercisesLogged.push({ name, sets: setsData });
                                     }
                                 });
                                 
                                 if (exercisesLogged.length === 0) {
-                                    alert('אנא הזן נתונים לפחות לתרגיל אחד לפני השמירה.');
+                                    alert('אנא הזן נתונים לפחות לסט אחד לפני השמירה.');
                                     return;
                                 }
 
@@ -180,9 +206,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                                             saveBtn.disabled = false;
                                             
                                             // Clear inputs for next time
-                                            trackingDivs.forEach(div => {
-                                                div.querySelector('.ex-weight').value = '';
-                                                div.querySelector('.ex-reps').value = '';
+                                            trackingContainers.forEach(container => {
+                                                const setRows = container.querySelectorAll('.exercise-set-row');
+                                                setRows.forEach(row => {
+                                                    row.querySelector('.set-weight').value = '';
+                                                    row.querySelector('.set-reps').value = '';
+                                                });
                                             });
                                         }, 3000);
                                     } else {
