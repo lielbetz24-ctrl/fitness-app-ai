@@ -221,9 +221,9 @@ app.post('/api/onboarding', cpUpload, async (req, res) => {
             return res.status(500).json({ error: e.message });
         }
 
-        const imageFrontUrl = files['image-front'] ? \`/uploads/\${files['image-front'][0].filename}\` : null;
-        const imageBackUrl = files['image-back'] ? \`/uploads/\${files['image-back'][0].filename}\` : null;
-        const imageSideUrl = files['image-side'] ? \`/uploads/\${files['image-side'][0].filename}\` : null;
+        const imageFrontUrl = files['image-front'] ? `/uploads/${files['image-front'][0].filename}` : null;
+        const imageBackUrl = files['image-back'] ? `/uploads/${files['image-back'][0].filename}` : null;
+        const imageSideUrl = files['image-side'] ? `/uploads/${files['image-side'][0].filename}` : null;
 
         const newUser = new User({
             age: parseInt(data.age),
@@ -289,9 +289,9 @@ app.post('/api/checkin', cpUpload, async (req, res) => {
             return res.status(500).json({ error: e.message });
         }
 
-        const imageFrontUrl = files['image-front'] ? \`/uploads/\${files['image-front'][0].filename}\` : null;
-        const imageBackUrl = files['image-back'] ? \`/uploads/\${files['image-back'][0].filename}\` : null;
-        const imageSideUrl = files['image-side'] ? \`/uploads/\${files['image-side'][0].filename}\` : null;
+        const imageFrontUrl = files['image-front'] ? `/uploads/${files['image-front'][0].filename}` : null;
+        const imageBackUrl = files['image-back'] ? `/uploads/${files['image-back'][0].filename}` : null;
+        const imageSideUrl = files['image-side'] ? `/uploads/${files['image-side'][0].filename}` : null;
 
         const newTracking = new BiweeklyTracking({
             user_id: userId,
@@ -370,5 +370,5 @@ app.use('/uploads', express.static(uploadDir));
 app.use(express.static(path.join(__dirname)));
 
 app.listen(PORT, () => {
-    console.log(\`Server is running on http://localhost:\${PORT}\`);
+    console.log(`Server is running on http://localhost:${PORT}`);
 });
