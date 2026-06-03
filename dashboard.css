@@ -269,6 +269,79 @@
     font-style: italic;
 }
 
+/* Nested Tabs for Workouts */
+.nested-tabs-nav {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    overflow-x: auto;
+    padding-bottom: 5px;
+}
+
+.nested-tab-btn {
+    background: var(--input-bg);
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 14px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s;
+}
+
+.nested-tab-btn.active {
+    background: #e67e22;
+    color: #fff;
+    border-color: #e67e22;
+}
+
+.nested-tab-pane {
+    display: none;
+    animation: fadeIn 0.3s;
+}
+
+.nested-tab-pane.active {
+    display: block;
+}
+
+/* Exercise Tracking Inputs */
+.exercise-tracking {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+    align-items: center;
+}
+
+.exercise-tracking input {
+    width: 80px;
+    padding: 8px;
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+    background: var(--input-bg);
+    color: var(--text-primary);
+    font-size: 14px;
+    text-align: center;
+}
+
+.btn-log-workout {
+    width: 100%;
+    margin-top: 20px;
+    background-color: #3498db;
+    color: white;
+    border: none;
+    padding: 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 16px;
+    transition: background-color 0.3s;
+}
+
+.btn-log-workout.success {
+    background-color: #2ecc71;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
     .profile-summary {

@@ -82,16 +82,27 @@ document.addEventListener('DOMContentLoaded', async () => {
                         const workoutContainerEl = document.getElementById('workout-list-container');
                         workoutContainerEl.innerHTML = '';
                         
-                        workoutArray.forEach(dayPlan => {
+                        const nestedNav = document.createElement('div');
+                        nestedNav.className = 'nested-tabs-nav';
+                        
+                        const nestedContent = document.createElement('div');
+                        nestedContent.className = 'nested-tabs-content';
+
+                        workoutArray.forEach((dayPlan, index) => {
+                            // Tab Button
+                            const tabBtn = document.createElement('button');
+                            tabBtn.className = `nested-tab-btn ${index === 0 ? 'active' : ''}`;
+                            tabBtn.textContent = dayPlan.day;
+                            nestedNav.appendChild(tabBtn);
+
+                            // Tab Pane
                             const dayBlock = document.createElement('div');
-                            dayBlock.style.marginBottom = '20px';
-                            dayBlock.style.paddingBottom = '15px';
-                            dayBlock.style.borderBottom = '1px solid var(--border-color)';
+                            dayBlock.className = `nested-tab-pane ${index === 0 ? 'active' : ''}`;
                             
                             const dayTitle = document.createElement('h4');
                             dayTitle.textContent = `${dayPlan.day} - ${dayPlan.title}`;
                             dayTitle.style.color = 'var(--text-primary)';
-                            dayTitle.style.marginBottom = '10px';
+                            dayTitle.style.marginBottom = '15px';
                             dayBlock.appendChild(dayTitle);
                             
                             const exList = document.createElement('ul');
@@ -99,17 +110,108 @@ document.addEventListener('DOMContentLoaded', async () => {
                             dayPlan.exercises.forEach(ex => {
                                 const li = document.createElement('li');
                                 li.innerHTML = `<strong>${ex.name}:</strong> ${ex.details}`;
+                                
+                                // Exercise Tracking Inputs
+                                const trackingDiv = document.createElement('div');
+                                trackingDiv.className = 'exercise-tracking';
+                                trackingDiv.innerHTML = `
+                                    <input type="hidden" class="ex-name" value="${ex.name}">
+                                    <input type="number" class="ex-weight" placeholder="משקל (KG)" step="0.5" min="0">
+                                    <input type="number" class="ex-reps" placeholder="חזרות" min="0">
+                                `;
+                                li.appendChild(trackingDiv);
                                 exList.appendChild(li);
                             });
                             dayBlock.appendChild(exList);
-                            workoutContainerEl.appendChild(dayBlock);
+                            
+                            // Save Button
+                            const saveBtn = document.createElement('button');
+                            saveBtn.className = 'btn-log-workout';
+                            saveBtn.textContent = 'סיים אימון ושמור נתונים';
+                            saveBtn.addEventListener('click', async () => {
+                                const trackingDivs = dayBlock.querySelectorAll('.exercise-tracking');
+                                const exercisesLogged = [];
+                                trackingDivs.forEach(div => {
+                                    const name = div.querySelector('.ex-name').value;
+                                    const weight = div.querySelector('.ex-weight').value;
+                                    const reps = div.querySelector('.ex-reps').value;
+                                    
+                                    // Log if they entered either weight or reps
+                                    if (weight || reps) {
+                                        exercisesLogged.push({ 
+                                            name, 
+                                            weight: parseFloat(weight) || 0, 
+                                            reps: parseInt(reps) || 0 
+                                        });
+                                    }
+                                });
+                                
+                                if (exercisesLogged.length === 0) {
+                                    alert('אנא הזן נתונים לפחות לתרגיל אחד לפני השמירה.');
+                                    return;
+                                }
+
+                                saveBtn.disabled = true;
+                                saveBtn.textContent = 'שומר נתונים...';
+
+                                const payload = {
+                                    userId: userId,
+                                    workoutData: {
+                                        date: new Date().toISOString(),
+                                        workout_day: dayPlan.day,
+                                        workout_title: dayPlan.title,
+                                        exercises: exercisesLogged
+                                    }
+                                };
+
+                                try {
+                                    const res = await fetch('/api/log-workout', {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify(payload)
+                                    });
+                                    
+                                    if (res.ok) {
+                                        saveBtn.classList.add('success');
+                                        saveBtn.textContent = '✓ אימון נשמר בהצלחה!';
+                                        setTimeout(() => {
+                                            saveBtn.classList.remove('success');
+                                            saveBtn.textContent = 'סיים אימון ושמור נתונים';
+                                            saveBtn.disabled = false;
+                                            
+                                            // Clear inputs for next time
+                                            trackingDivs.forEach(div => {
+                                                div.querySelector('.ex-weight').value = '';
+                                                div.querySelector('.ex-reps').value = '';
+                                            });
+                                        }, 3000);
+                                    } else {
+                                        const err = await res.json();
+                                        alert('שגיאה בשמירה: ' + (err.error || 'נסה שוב'));
+                                        saveBtn.disabled = false;
+                                        saveBtn.textContent = 'סיים אימון ושמור נתונים';
+                                    }
+                                } catch(err) {
+                                    alert('שגיאת תקשורת מול השרת');
+                                    saveBtn.disabled = false;
+                                    saveBtn.textContent = 'סיים אימון ושמור נתונים';
+                                }
+                            });
+                            dayBlock.appendChild(saveBtn);
+                            
+                            nestedContent.appendChild(dayBlock);
+
+                            // Tab Switching Logic
+                            tabBtn.addEventListener('click', () => {
+                                Array.from(nestedNav.children).forEach(c => c.classList.remove('active'));
+                                Array.from(nestedContent.children).forEach(c => c.classList.remove('active'));
+                                tabBtn.classList.add('active');
+                                dayBlock.classList.add('active');
+                            });
                         });
                         
-                        // Remove border from last block
-                        if(workoutContainerEl.lastChild) {
-                            workoutContainerEl.lastChild.style.borderBottom = 'none';
-                            workoutContainerEl.lastChild.style.paddingBottom = '0';
-                        }
+                        workoutContainerEl.appendChild(nestedNav);
+                        workoutContainerEl.appendChild(nestedContent);
                     } catch (e) {
                         console.error('Failed to parse workout plan', e);
                     }
