@@ -53,8 +53,11 @@ document.addEventListener('DOMContentLoaded', () => {
             if (response.ok) {
                 // Save token and navigate
                 localStorage.setItem('token', data.token);
-                // If registering, go to onboarding. If logging in, go to dashboard.
-                window.location.href = isLogin ? 'dashboard.html' : 'index.html';
+                if (data.isOnboardingCompleted) {
+                    window.location.href = 'dashboard.html';
+                } else {
+                    window.location.href = 'index.html';
+                }
             } else {
                 errorMessage.textContent = data.error || 'שגיאה כלשהי אירעה';
                 errorMessage.style.display = 'block';
