@@ -374,4 +374,60 @@ document.addEventListener('DOMContentLoaded', async () => {
             window.location.href = 'login.html';
         });
     }
+
+    // PDF Export Logic
+    const getPdfConfig = (filename) => ({
+        margin: 15,
+        filename: filename,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    });
+
+    const btnExportNutrition = document.getElementById('btn-export-nutrition');
+    if (btnExportNutrition) {
+        btnExportNutrition.addEventListener('click', () => {
+            const originalText = btnExportNutrition.innerHTML;
+            btnExportNutrition.innerHTML = 'מייצר PDF...';
+            
+            const element = document.querySelector('.nutrition-card');
+            element.classList.add('pdf-exporting');
+            
+            html2pdf().set(getPdfConfig('nutrition-plan.pdf')).from(element).save().then(() => {
+                element.classList.remove('pdf-exporting');
+                btnExportNutrition.innerHTML = originalText;
+            });
+        });
+    }
+
+    const btnExportWorkout = document.getElementById('btn-export-workout');
+    if (btnExportWorkout) {
+        btnExportWorkout.addEventListener('click', () => {
+            const originalText = btnExportWorkout.innerHTML;
+            btnExportWorkout.innerHTML = 'מייצר PDF...';
+            
+            const element = document.getElementById('tab-workout');
+            const allPanes = element.querySelectorAll('.nested-tab-pane');
+            
+            // Show all workout days for export
+            allPanes.forEach(p => {
+                p.style.display = 'block';
+                p.style.opacity = '1';
+                p.style.animation = 'none';
+            });
+            
+            element.classList.add('pdf-exporting');
+            
+            html2pdf().set(getPdfConfig('workout-plan.pdf')).from(element).save().then(() => {
+                // Restore UI state
+                allPanes.forEach(p => {
+                    p.style.display = '';
+                    p.style.opacity = '';
+                    p.style.animation = '';
+                });
+                element.classList.remove('pdf-exporting');
+                btnExportWorkout.innerHTML = originalText;
+            });
+        });
+    }
 });

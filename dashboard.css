@@ -442,3 +442,48 @@
     color: var(--primary-color);
     margin-bottom: 10px;
 }
+
+/* PDF Export Styles */
+.pdf-exporting {
+    background: #ffffff !important;
+    color: #000000 !important;
+    padding: 20px !important;
+}
+.pdf-exporting * {
+    color: #000000 !important;
+}
+.pdf-exporting .program-card,
+.pdf-exporting .macro-summary,
+.pdf-exporting .card-body {
+    background: #ffffff !important;
+    box-shadow: none !important;
+    border: none !important;
+}
+.pdf-exporting .card-header {
+    border-bottom: 2px solid #333 !important;
+}
+.pdf-exporting .badge {
+    background-color: #f0f0f0 !important;
+    color: #333 !important;
+    border: 1px solid #ccc !important;
+}
+.pdf-exporting .btn,
+.pdf-exporting button,
+.pdf-exporting input,
+.pdf-exporting .nested-tabs-nav {
+    display: none !important;
+}
+.pdf-exporting .exercise-set-row {
+    display: block !important;
+    background: transparent !important;
+    border-bottom: 1px solid #eee !important;
+    padding: 8px 0 !important;
+    margin-bottom: 0 !important;
+}
+.pdf-exporting .set-label {
+    font-size: 14px !important;
+    font-weight: normal !important;
+}
+.pdf-exporting .workout-desc {
+    margin-bottom: 20px !important;
+}
