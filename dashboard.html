@@ -13,6 +13,7 @@
     <link rel="stylesheet" href="style.css?v=3">
     <link rel="stylesheet" href="dashboard.css?v=3">
     <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 <body>
     <div class="dashboard-container">
@@ -69,6 +70,10 @@
 
             <!-- Nutrition Tab -->
             <div id="tab-nutrition" class="tab-pane">
+                <button id="btn-export-nutrition" class="btn btn-secondary" style="width: 100%; margin-bottom: 15px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                    ייצוא תפריט ל-PDF
+                </button>
                 <div class="program-card nutrition-card">
                     <div class="card-header">
                         <h3>🍏 תפריט תזונה להיום</h3>
@@ -90,6 +95,10 @@
 
             <!-- Workout Tab -->
             <div id="tab-workout" class="tab-pane">
+                <button id="btn-export-workout" class="btn btn-secondary" style="width: 100%; margin-bottom: 15px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                    ייצוא תוכנית אימונים ל-PDF
+                </button>
                 <div class="program-card workout-card" style="margin-bottom: 20px;">
                     <div class="card-header">
                         <h3>💪 תוכנית אימונים מפורטת</h3>
