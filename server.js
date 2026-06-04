@@ -149,7 +149,8 @@ const programSchema = new mongoose.Schema({
     protein_grams: Number,
     carbs_grams: Number,
     fats_grams: Number,
-    daily_menu: mongoose.Schema.Types.Mixed,    // Saves the JSON array natively
+    portion_budget: mongoose.Schema.Types.Mixed,
+    portion_bank: mongoose.Schema.Types.Mixed,
     workout_plan: mongoose.Schema.Types.Mixed,  // Saves the JSON array natively
     cardio_and_neat: mongoose.Schema.Types.Mixed,
     workout_logs: [mongoose.Schema.Types.Mixed], // Progressive Overload tracking
@@ -205,16 +206,16 @@ async function generateProgramAI(data) {
     תפקידך לייצר תוכנית תזונה ואימונים מותאמת אישית, מפורטת ומדויקת בעברית.
     עליך להחזיר אך ורק אובייקט JSON תקין (ללא כל Markdown וללא שום טקסט מילולי לפני או אחרי האובייקט).
     
-    חוקי תזונה מוחלטים:
-    1. חובה להשתמש אך ורק במידות משקל (גרמים) עבור כל פריט מזון (למשל: 150g חזה עוף, 200g אורז). איסור מוחלט על שימוש במידות נפח או כמות (כוסות, כפות, פרוסות).
-    2. הדיוק הקלורי חייב להיות מתמטי ולהיגזר ישירות מהגרמים של המאקרו-נוטריאנטים (פחמימה/חלבון = 4 קק"ל, שומן = 9 קק"ל).
-    3. חובה לחלק את סך הקלוריות והמאקרו במדויק על פני מספר הארוחות הספציפי שהמשתמש ביקש.
-    4. שלב המלצות למתכוני כושר פרקטיים המותאמים למכשירי מטבח מודרניים (כגון שימוש ב-Airfryer לארוחות מהירות או Ninja Creami לקינוחי חלבון).
+    חוקי תזונה מוחלטים - מעבר ל'בנק מנות' (Exchange Lists):
+    1. ביטול ארוחות קבועות: חל איסור מוחלט לייצר תפריט המכיל ארוחות ספציפיות מסודרות לפי זמנים (בוקר, צהריים, ערב).
+    2. חישוב תקציב יומי (portionBudget): חשב את ה-BMR באמצעות נוסחת Mifflin-St Jeor והתאם את הקלוריות והמאקרו. חלק את סך הקלוריות והמאקרו במדויק לתקציב מנות (למשל 6 מנות פחמימה, 5 מנות חלבון, 3 מנות שומן), כך שכל בחירה מהבנק תתכנס בדיוק ליעדים התזונתיים.
+    3. סטנדרטיזציה והשוואת עריכים (portionBank): צור 3 קטגוריות מרכזיות (carbs, protein, fats). קבע סטנדרט קבוע לכל מנה (למשל: מנת פחמימה = ~15g פחמימה, מנת חלבון = ~20g חלבון).
+    4. חובה להשתמש אך ורק במידות משקל (גרמים) עבור כל פריט בבנק. כמות הגרמים של כל מזון בבנק תחושב דינמית כדי להתאים לסטנדרט המנה שנקבע – לדוגמה, כמות הגרמים של בטטה המהווה 'מנת פחמימה' תהיה זהה קלורית למנת אורז.
     
     חוקי אימון מוחלטים:
-    1. כל אימון חייב להתחיל בסעיף של 'חימום מפרקי דינמי וספציפי' המכין את קבוצות השרירים המיועדות לאותו יום.
-    2. סדר התרגילים חייב להיות אנליטי: תמיד להתחיל בתרגילים מורכבים כבדים (Squat, Deadlift, Bench Press וכו'), לעבור לתרגילים מורכבים משניים, ורק בסוף לבצע תרגילי בידוד (Isolation). 
-    3. חובה לשלב הנחיות ליישום Progressive Overload בתרגילים המורכבים.
+    1. כל אימון חייב להתחיל בסעיף של 'חימום מפרקי דינמי וספציפי'.
+    2. סדר התרגילים חייב להיות אנליטי: תמיד להתחיל בתרגילים מורכבים כבדים לעבור לתרגילים מורכבים משניים, ורק בסוף לבצע תרגילי בידוד.
+    3. חובה לשלב הנחיות ליישום Progressive Overload.
     
     מבנה ה-JSON המחייב:
     {
@@ -222,20 +223,26 @@ async function generateProgramAI(data) {
         "proteinGrams": <מספר>,
         "carbsGrams": <מספר>,
         "fatsGrams": <מספר>,
-        "dailyMenu": [
-            { "meal": "שם הארוחה (חייב להתאים למספר הארוחות המבוקש)", "items": "פירוט המרכיבים בגרמים בלבד והמלצות" }
-        ],
+        "portionBudget": {
+            "carbs": <מספר>,
+            "protein": <מספר>,
+            "fats": <מספר>
+        },
+        "portionBank": {
+            "carbs": [ { "name": "שם הפריט", "amount": "כמות בגרמים השווה למנת פחמימה אחת" } ],
+            "protein": [ { "name": "שם הפריט", "amount": "כמות בגרמים השווה למנת חלבון אחת" } ],
+            "fats": [ { "name": "שם הפריט", "amount": "כמות בגרמים השווה למנת שומן אחת" } ]
+        },
         "workoutPlan": [
             { "day": "שם היום", "title": "כותרת האימון", "exercises": [
-                { "name": "שם התרגיל (למשל חימום מפרקי / סקוואט)", "details": "פרטי התרגיל, סטים, חזרות, והנחיות Progressive Overload" }
+                { "name": "שם התרגיל", "details": "פרטי התרגיל, סטים, חזרות והנחיות" }
             ]}
         ],
         "cardioAndNeat": {
-            "dailyStepsTarget": <מספר יעד צעדים יומי מדויק>,
-            "weeklyCardio": "הנחיות לאימון אירובי שבועי: עצימות, משך וסוג"
+            "dailyStepsTarget": <מספר>,
+            "weeklyCardio": "הנחיות לאימון אירובי שבועי"
         }
     }
-    חשב את ה-BMR באמצעות נוסחת Mifflin-St Jeor והתאם את הקלוריות ויחסי המאקרו לפי המטרות וההעדפות שהוזנו.
     `;
 
     const userPrompt = `
@@ -246,7 +253,6 @@ async function generateProgramAI(data) {
     משקל: ${data.weight} ק"ג
     העדפה תזונתית: ${data.diet}
     מאכלים/העדפות (אם צוינו): ${data['food-prefs']}
-    מספר ארוחות רצוי ביום: ${data['meals-per-day']} (חובה לפצל את התפריט למספר ארוחות זה)
     ימי אימון בשבוע: ${data['workout-days']}
     מטרות ויזואליות / רצונות: ${data['visual-goals']}
     
@@ -269,7 +275,16 @@ async function generateCheckinAI(oldProgram, newTracking, feelings, workoutLogs 
         "proteinGrams": <מספר>,
         "carbsGrams": <מספר>,
         "fatsGrams": <מספר>,
-        "dailyMenu": [ ...מערך ארוחות מעודכן או זהה (חייב להקפיד על הדיוק בגרמים כמו הקודם)... ],
+        "portionBudget": {
+            "carbs": <מספר מנות פחמימה ביום>,
+            "protein": <מספר מנות חלבון ביום>,
+            "fats": <מספר מנות שומן ביום>
+        },
+        "portionBank": {
+            "carbs": [ { "name": "שם הפריט", "amount": "כמות בגרמים השווה למנת פחמימה אחת" } ],
+            "protein": [ { "name": "שם הפריט", "amount": "כמות בגרמים השווה למנת חלבון אחת" } ],
+            "fats": [ { "name": "שם הפריט", "amount": "כמות בגרמים השווה למנת שומן אחת" } ]
+        },
         "workoutPlan": [ ...מערך אימונים עם חימום דינמי ו-Progressive overload... ],
         "cardioAndNeat": {
             "dailyStepsTarget": <מספר יעד צעדים יומי מדויק>,
@@ -281,7 +296,7 @@ async function generateCheckinAI(oldProgram, newTracking, feelings, workoutLogs 
     const userPrompt = `
     נתוני תוכנית קודמת:
     קלוריות: ${oldProgram.target_calories}
-    תפריט קודם (JSON חלקי): ${JSON.stringify(oldProgram.daily_menu).substring(0, 300)}...
+    תקציב מנות קודם (JSON חלקי): ${JSON.stringify(oldProgram.portion_budget)}
     
     נתונים מהשבועיים האחרונים:
     משקל נוכחי: ${newTracking.weight} ק"ג
@@ -352,7 +367,8 @@ app.post('/api/onboarding', authenticateToken, cpUpload, async (req, res) => {
             protein_grams: aiProgram.proteinGrams,
             carbs_grams: aiProgram.carbsGrams,
             fats_grams: aiProgram.fatsGrams,
-            daily_menu: aiProgram.dailyMenu, // Saved natively as JSON due to Mixed type
+            portion_budget: aiProgram.portionBudget,
+            portion_bank: aiProgram.portionBank,
             workout_plan: aiProgram.workoutPlan, // Saved natively as JSON due to Mixed type
             cardio_and_neat: aiProgram.cardioAndNeat
         });
@@ -423,7 +439,8 @@ app.post('/api/checkin', authenticateToken, cpUpload, async (req, res) => {
             protein_grams: aiCheckin.proteinGrams,
             carbs_grams: aiCheckin.carbsGrams,
             fats_grams: aiCheckin.fatsGrams,
-            daily_menu: aiCheckin.dailyMenu,
+            portion_budget: aiCheckin.portionBudget,
+            portion_bank: aiCheckin.portionBank,
             workout_plan: aiCheckin.workoutPlan,
             cardio_and_neat: aiCheckin.cardioAndNeat,
             ai_feedback: aiCheckin.ai_feedback
@@ -493,9 +510,8 @@ app.get('/api/user/me', authenticateToken, async (req, res) => {
             protein_grams: program ? program.protein_grams : null,
             carbs_grams: program ? program.carbs_grams : null,
             fats_grams: program ? program.fats_grams : null,
-            // JSON stringify the daily_menu and workout_plan because the frontend dashboard.js uses JSON.parse() on them!
-            // We stringify it here so the frontend API remains perfectly unchanged.
-            daily_menu: program && program.daily_menu ? JSON.stringify(program.daily_menu) : null,
+            portion_budget: program && program.portion_budget ? JSON.stringify(program.portion_budget) : null,
+            portion_bank: program && program.portion_bank ? JSON.stringify(program.portion_bank) : null,
             workout_plan: program && program.workout_plan ? JSON.stringify(program.workout_plan) : null,
             cardio_and_neat: program && program.cardio_and_neat ? JSON.stringify(program.cardio_and_neat) : null,
             ai_feedback: program ? program.ai_feedback : null
