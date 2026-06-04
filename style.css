@@ -16,6 +16,11 @@
     padding: 0;
 }
 
+html, body {
+    overflow-x: hidden;
+    width: 100%;
+}
+
 body {
     font-family: 'Heebo', sans-serif;
     background-color: var(--bg-color);

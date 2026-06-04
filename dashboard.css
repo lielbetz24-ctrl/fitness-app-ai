@@ -317,6 +317,7 @@
     display: flex;
     gap: 10px;
     align-items: center;
+    flex-wrap: wrap;
 }
 
 .set-label {
@@ -356,6 +357,12 @@
 
 /* Responsive */
 @media (max-width: 768px) {
+    .dashboard-container {
+        padding: 10px;
+        width: 100%;
+        max-width: 100%;
+    }
+    
     .profile-summary {
         grid-template-columns: 1fr;
     }
@@ -364,6 +371,20 @@
     }
     .metrics-grid {
         flex-direction: column;
+    }
+    
+    .nested-tabs-nav {
+        flex-wrap: wrap;
+        padding-bottom: 10px;
+    }
+    
+    .exercise-set-row {
+        gap: 5px;
+    }
+    
+    .exercise-set-row input {
+        width: calc(50% - 15px);
+        flex: 1;
     }
 }
 
