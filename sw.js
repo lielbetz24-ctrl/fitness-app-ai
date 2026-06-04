@@ -1,55 +1,61 @@
-const CACHE_NAME = 'fitai-cache-v1';
+const CACHE_NAME = 'fitness-v3';
 const urlsToCache = [
   '/',
-  '/index.html',
-  '/dashboard.html',
-  '/style.css',
-  '/dashboard.css',
-  '/script.js',
-  '/dashboard.js'
+  '/index.html?v=3',
+  '/dashboard.html?v=3',
+  '/login.html?v=3',
+  '/style.css?v=3',
+  '/dashboard.css?v=3',
+  '/script.js?v=3',
+  '/dashboard.js?v=3',
+  '/login.js?v=3',
+  '/icon.svg',
+  '/manifest.json'
 ];
 
 self.addEventListener('install', event => {
+  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
-        console.log('Opened cache');
         return cache.addAll(urlsToCache);
       })
   );
 });
 
+self.addEventListener('activate', event => {
+  event.waitUntil(
+    caches.keys().then(cacheNames => {
+      return Promise.all(
+        cacheNames.map(cacheName => {
+          if (cacheName !== CACHE_NAME) {
+            return caches.delete(cacheName);
+          }
+        })
+      );
+    })
+  );
+  self.clients.claim();
+});
+
 self.addEventListener('fetch', event => {
-  // Only intercept GET requests
   if (event.request.method !== 'GET') return;
-  // Bypass API requests
   if (event.request.url.includes('/api/')) return;
 
   event.respondWith(
-    caches.match(event.request)
-      .then(response => {
-        // Cache hit - return response
-        if (response) {
-          return response;
+    fetch(event.request)
+      .then(networkResponse => {
+        if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
+          return networkResponse;
         }
-        return fetch(event.request).then(
-          function(response) {
-            // Check if we received a valid response
-            if(!response || response.status !== 200 || response.type !== 'basic') {
-              return response;
-            }
-
-            // Clone the response because it's a stream
-            var responseToCache = response.clone();
-
-            caches.open(CACHE_NAME)
-              .then(function(cache) {
-                cache.put(event.request, responseToCache);
-              });
-
-            return response;
-          }
-        );
+        const responseToCache = networkResponse.clone();
+        caches.open(CACHE_NAME).then(cache => {
+          cache.put(event.request, responseToCache);
+        });
+        return networkResponse;
+      })
+      .catch(() => {
+        return caches.match(event.request);
       })
   );
 });

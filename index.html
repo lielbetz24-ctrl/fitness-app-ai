@@ -10,7 +10,7 @@
     <meta name="apple-mobile-web-app-title" content="FitAI">
     <link rel="apple-touch-icon" href="/icon.svg">
     <link rel="manifest" href="/manifest.json">
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=3">
     <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;600;800&display=swap" rel="stylesheet">
 </head>
 <body>
@@ -183,7 +183,7 @@
             <button type="button" id="btn-next" class="btn btn-primary">הבא</button>
         </div>
     </div>
-    <script src="script.js"></script>
+    <script src="script.js?v=3"></script>
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
@@ -191,6 +191,10 @@
                     console.log('SW registered:', reg.scope);
                 }).catch(err => {
                     console.log('SW registration failed:', err);
+                });
+                
+                navigator.serviceWorker.addEventListener('controllerchange', () => {
+                    window.location.reload();
                 });
             });
         }
