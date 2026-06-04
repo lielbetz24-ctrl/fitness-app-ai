@@ -50,7 +50,7 @@ mongoose.connection.on('error', err => {
 });
 
 // Data Versioning
-const CURRENT_PROGRAM_VERSION = 2;
+const CURRENT_SCHEMA_VERSION = 3;
 
 // Mongoose Schemas (Dynamic & Flexible)
 const userSchema = new mongoose.Schema({
@@ -229,7 +229,7 @@ async function generateProgramAI(data) {
     
     מבנה ה-JSON המחייב (SCHEMA קשיח - אין לחרוג ממנו, חובה להשתמש במפתחות אלו בדיוק, והערכים בתקציב חייבים להיות מספרים שלמים Int בלבד):
     {
-        "schema_version": ${CURRENT_PROGRAM_VERSION},
+        "schema_version": ${CURRENT_SCHEMA_VERSION},
         "targetCalories": <מספר שלם>,
         "proteinGrams": <מספר שלם>,
         "carbsGrams": <מספר שלם>,
@@ -294,7 +294,7 @@ async function generateCheckinAI(oldProgram, newTracking, feelings, workoutLogs 
     3. חישוב בנק התחליפים (Portion Bank Grams): כמות הגרמים של כל מאכל צריכה לכלול את המאקרו המשולב (שומן נטו בתוך טחינה, פחמימה נטו בתוך אורז וכו').
     החזר אך ורק אובייקט JSON בתבנית הבאה (SCHEMA קשיח, מספרים שלמים בלבד בתקציב):
     {
-        "schema_version": ${CURRENT_PROGRAM_VERSION},
+        "schema_version": ${CURRENT_SCHEMA_VERSION},
         "ai_feedback": "טקסט הפידבק החכם שלך...",
         "targetCalories": <מספר שלם>,
         "proteinGrams": <מספר שלם>,
@@ -394,7 +394,7 @@ app.post('/api/onboarding', authenticateToken, cpUpload, async (req, res) => {
 
         const newProgram = new Program({
             user_id: user._id,
-            schema_version: aiProgram.schema_version || CURRENT_PROGRAM_VERSION,
+            schema_version: aiProgram.schema_version || CURRENT_SCHEMA_VERSION,
             target_calories: aiProgram.targetCalories,
             protein_grams: aiProgram.proteinGrams,
             carbs_grams: aiProgram.carbsGrams,
@@ -468,7 +468,7 @@ app.post('/api/checkin', authenticateToken, cpUpload, async (req, res) => {
         // Insert new program
         const newProgram = new Program({
             user_id: userId,
-            schema_version: aiCheckin.schema_version || CURRENT_PROGRAM_VERSION,
+            schema_version: aiCheckin.schema_version || CURRENT_SCHEMA_VERSION,
             target_calories: aiCheckin.targetCalories,
             protein_grams: aiCheckin.proteinGrams,
             carbs_grams: aiCheckin.carbsGrams,
@@ -535,8 +535,8 @@ app.get('/api/user/me', authenticateToken, async (req, res) => {
         let program = await Program.findOne({ user_id: userId, is_active: true });
         
         // --- Auto-Migration / Lazy Migration Interceptor ---
-        if (program && (!program.schema_version || program.schema_version < CURRENT_PROGRAM_VERSION)) {
-            console.log(`Auto-migrating user ${userId} to schema_version ${CURRENT_PROGRAM_VERSION}...`);
+        if (program && (!program.schema_version || program.schema_version < CURRENT_SCHEMA_VERSION)) {
+            console.log(`Auto-migrating user ${userId} to schema_version ${CURRENT_SCHEMA_VERSION}...`);
             
             // Gather existing data for the AI to rebuild the program
             const height = user.height || 175; // Default if old user didn't save height
@@ -558,7 +558,7 @@ app.get('/api/user/me', authenticateToken, async (req, res) => {
                 const aiProgram = await generateProgramAI(migrationData);
                 
                 // Update the document in MongoDB
-                program.schema_version = aiProgram.schema_version || CURRENT_PROGRAM_VERSION;
+                program.schema_version = aiProgram.schema_version || CURRENT_SCHEMA_VERSION;
                 program.target_calories = aiProgram.targetCalories;
                 program.protein_grams = aiProgram.proteinGrams;
                 program.carbs_grams = aiProgram.carbsGrams;
