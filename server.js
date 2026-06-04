@@ -53,6 +53,7 @@ mongoose.connection.on('error', err => {
 const userSchema = new mongoose.Schema({
     email: { type: String, required: true, unique: true, lowercase: true },
     password: { type: String, required: true },
+    isOnboardingCompleted: { type: Boolean, default: false },
     age: Number,
     gender: String,
     nutrition_preferences: mongoose.Schema.Types.Mixed, // e.g. { diet, foodPrefs }
@@ -102,7 +103,7 @@ app.post('/api/auth/register', async (req, res) => {
         await user.save();
         
         const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET || 'fallback_secret_for_dev', { expiresIn: '30d' });
-        res.json({ token, userId: user._id });
+        res.json({ token, userId: user._id, isOnboardingCompleted: user.isOnboardingCompleted });
     } catch (e) {
         res.status(500).json({ error: 'שגיאת שרת פנימית ברישום.' });
     }
@@ -120,7 +121,7 @@ app.post('/api/auth/login', async (req, res) => {
         if (!isMatch) return res.status(400).json({ error: 'סיסמה שגויה.' });
         
         const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET || 'fallback_secret_for_dev', { expiresIn: '30d' });
-        res.json({ token, userId: user._id });
+        res.json({ token, userId: user._id, isOnboardingCompleted: user.isOnboardingCompleted });
     } catch (e) {
         res.status(500).json({ error: 'שגיאת שרת פנימית בהתחברות.' });
     }
@@ -326,7 +327,8 @@ app.post('/api/onboarding', authenticateToken, cpUpload, async (req, res) => {
             nutrition_preferences: { diet: data.diet, foodPrefs: data['food-prefs'] },
             workout_days_per_week: parseInt(data['workout-days']),
             meals_per_day: parseInt(data['meals-per-day']),
-            visual_goals: data['visual-goals']
+            visual_goals: data['visual-goals'],
+            isOnboardingCompleted: true
         }, { new: true });
         
         if (!user) return res.status(404).json({ error: 'משתמש לא נמצא במערכת.' });
