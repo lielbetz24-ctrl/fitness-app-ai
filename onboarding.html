@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>הרשמה - אפליקציית כושר ותזונה</title>
+    <meta name="theme-color" content="#3498db">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="FitAI">
+    <link rel="apple-touch-icon" href="/icon.svg">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="stylesheet" href="style.css?v=3">
+    <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;600;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="onboarding-container">
+        <div class="progress-container">
+            <div class="progress-bar" id="progress-bar"></div>
+            <div class="steps-indicator">
+                <div class="step active" data-step="1">1</div>
+                <div class="step" data-step="2">2</div>
+                <div class="step" data-step="3">3</div>
+                <div class="step" data-step="4">4</div>
+            </div>
+        </div>
+
+        <div class="wizard-content">
+            <form id="onboarding-form">
+                <!-- Step 1: Body Metrics -->
+                <div class="wizard-step active" id="step-1">
+                    <h2>נתונים יבשים</h2>
+                    <p>בואו נתחיל מהבסיס. הנתונים האלו יעזרו לנו לבנות עבורך תוכנית מדויקת.</p>
+                    
+                    <div class="input-group">
+                        <label for="age">גיל</label>
+                        <input type="number" id="age" name="age" min="16" max="120" required placeholder="למשל 25">
+                    </div>
+
+                    <div class="input-group">
+                        <label>מגדר</label>
+                        <div class="radio-group">
+                            <label class="radio-label">
+                                <input type="radio" name="gender" value="male" checked>
+                                <span class="custom-radio"></span> זכר
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="gender" value="female">
+                                <span class="custom-radio"></span> נקבה
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="height">גובה (ס"מ)</label>
+                        <input type="number" id="height" name="height" min="100" max="250" required placeholder="למשל 175">
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="weight">משקל (ק"ג)</label>
+                        <input type="number" id="weight" name="weight" min="30" max="250" step="0.1" required placeholder="למשל 70">
+                    </div>
+
+                    <h3>היקפים (ס"מ)</h3>
+                    <div class="measurements-grid">
+                        <div class="input-group">
+                            <label for="waist">מותניים</label>
+                            <input type="number" id="waist" name="waist" step="0.1" required>
+                        </div>
+                        <div class="input-group">
+                            <label for="shoulders">כתפיים</label>
+                            <input type="number" id="shoulders" name="shoulders" step="0.1" required>
+                        </div>
+                        <div class="input-group">
+                            <label for="arms">ידיים</label>
+                            <input type="number" id="arms" name="arms" step="0.1" required>
+                        </div>
+                        <div class="input-group">
+                            <label for="thighs">ירכיים</label>
+                            <input type="number" id="thighs" name="thighs" step="0.1" required>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 2: Images -->
+                <div class="wizard-step" id="step-2">
+                    <h2>תמונות התקדמות</h2>
+                    <p>התמונות יהיו זמינות רק לך ויעזרו למעקב. מומלץ להצטלם באותה תאורה בכל פעם.</p>
+                    
+                    <div class="image-upload-grid">
+                        <div class="file-upload-wrapper">
+                            <label>חזית</label>
+                            <div class="file-upload-box" id="box-front">
+                                <span>העלאת תמונה</span>
+                                <input type="file" id="image-front" name="image-front" accept="image/*">
+                            </div>
+                        </div>
+                        <div class="file-upload-wrapper">
+                            <label>גב</label>
+                            <div class="file-upload-box" id="box-back">
+                                <span>העלאת תמונה</span>
+                                <input type="file" id="image-back" name="image-back" accept="image/*">
+                            </div>
+                        </div>
+                        <div class="file-upload-wrapper">
+                            <label>צד</label>
+                            <div class="file-upload-box" id="box-side">
+                                <span>העלאת תמונה</span>
+                                <input type="file" id="image-side" name="image-side" accept="image/*">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 3: Habits -->
+                <div class="wizard-step" id="step-3">
+                    <h2>הרגלים והעדפות</h2>
+                    <p>כמה זמן יש לך להשקיע ומה אתה אוהב לאכול?</p>
+
+                    <div class="input-group">
+                        <label for="workout-days">ימי אימון בשבוע</label>
+                        <select id="workout-days" name="workout-days" required>
+                            <option value="" disabled selected>בחר מספר ימים</option>
+                            <option value="2">2 ימים</option>
+                            <option value="3">3 ימים</option>
+                            <option value="4">4 ימים</option>
+                            <option value="5">5 ימים</option>
+                            <option value="6">6 ימים</option>
+                        </select>
+                    </div>
+
+                    <div class="input-group">
+                        <label>העדפות תזונה</label>
+                        <div class="radio-group">
+                            <label class="radio-label">
+                                <input type="radio" name="diet" value="regular" checked>
+                                <span class="custom-radio"></span> רגיל
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="diet" value="vegetarian">
+                                <span class="custom-radio"></span> צמחוני
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="diet" value="vegan">
+                                <span class="custom-radio"></span> טבעוני
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="food-prefs">מאכלים מועדפים או לא רצויים</label>
+                        <textarea id="food-prefs" name="food-prefs" rows="3" placeholder="למשל: לא אוהב ברוקולי, רגיש ללקטוז, אוהב מאוד דגים..."></textarea>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="meals-per-day">מספר ארוחות מועדף ביום</label>
+                        <select id="meals-per-day" name="meals-per-day" required>
+                            <option value="" disabled selected>בחר מספר ארוחות</option>
+                            <option value="2">2 ארוחות ביום</option>
+                            <option value="3">3 ארוחות ביום</option>
+                            <option value="4">4 ארוחות ביום</option>
+                            <option value="5">5 ארוחות ביום</option>
+                            <option value="6">6 ארוחות ביום</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Step 4: Goals -->
+                <div class="wizard-step" id="step-4">
+                    <h2>מטרות ואסתטיקה</h2>
+                    <p>איך נראה הגוף האידיאלי בעיניך?</p>
+
+                    <div class="input-group">
+                        <label for="visual-goals">תיאור המראה האסתטי</label>
+                        <textarea id="visual-goals" name="visual-goals" rows="5" placeholder="ספר לנו על המטרות שלך: למשל 'אני רוצה להרחיב את הכתפיים, לחטב את הבטן ולקבל מראה אתלטי...'"></textarea>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <div class="wizard-footer">
+            <button type="button" id="btn-prev" class="btn btn-secondary" disabled>חזור</button>
+            <button type="button" id="btn-next" class="btn btn-primary">הבא</button>
+        </div>
+    </div>
+    <script src="script.js?v=3"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js').then(reg => {
+                    console.log('SW registered:', reg.scope);
+                }).catch(err => {
+                    console.log('SW registration failed:', err);
+                });
+                
+                navigator.serviceWorker.addEventListener('controllerchange', () => {
+                    window.location.reload();
+                });
+            });
+        }
+    </script>
+</body>
+</html>

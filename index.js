@@ -20,7 +20,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (data.isOnboardingCompleted) {
                         window.location.replace('dashboard.html');
                     } else {
-                        window.location.replace('index.html');
+                        window.location.replace('onboarding.html');
                     }
                     return;
                 }

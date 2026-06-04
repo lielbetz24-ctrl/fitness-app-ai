@@ -1,7 +1,7 @@
 document.addEventListener('DOMContentLoaded', async () => {
     const token = localStorage.getItem('token');
     if (!token) {
-        window.location.replace('login.html');
+        window.location.replace('index.html');
         return;
     }
     const totalDays = 14;
