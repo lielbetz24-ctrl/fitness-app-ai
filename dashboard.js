@@ -395,7 +395,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         } else {
             // Unauthenticated or not found
             localStorage.removeItem('token');
-            window.location.href = 'login.html';
+            window.location.replace('index.html');
         }
     } catch (error) {
         console.error('Network error', error);
@@ -491,7 +491,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (btnLogout) {
         btnLogout.addEventListener('click', () => {
             localStorage.removeItem('token');
-            window.location.href = 'login.html';
+            window.location.replace('index.html');
         });
     }
 
