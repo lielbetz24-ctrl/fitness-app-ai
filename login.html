@@ -12,62 +12,185 @@
     <link rel="stylesheet" href="style.css?v=3">
     <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;600;800&display=swap" rel="stylesheet">
     <style>
+        body {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: var(--bg-color, #121418);
+        }
+        .auth-wrapper {
+            width: 100%;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
         .auth-container {
             width: 100%;
-            max-width: 400px;
-            background-color: var(--card-bg);
-            padding: 40px;
-            border-radius: 20px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            max-width: 420px;
+            background-color: #1a1c23;
+            padding: 50px 40px;
+            border-radius: 24px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.05);
             text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        .auth-container::before {
+            content: '';
+            position: absolute;
+            top: -50px;
+            left: -50px;
+            width: 150px;
+            height: 150px;
+            background: var(--primary-color, #9b59b6);
+            filter: blur(100px);
+            opacity: 0.3;
+            z-index: 0;
+        }
+        .auth-content {
+            position: relative;
+            z-index: 1;
         }
         .auth-logo {
-            font-size: 48px;
-            margin-bottom: 10px;
+            font-size: 54px;
+            margin-bottom: 5px;
+            text-shadow: 0 0 20px rgba(155, 89, 182, 0.4);
         }
         .auth-title {
-            color: var(--primary-color);
-            margin-bottom: 30px;
+            color: #ffffff;
+            font-size: 28px;
+            font-weight: 800;
+            margin-bottom: 5px;
+        }
+        .auth-subtitle {
+            color: var(--text-secondary, #95a5a6);
+            font-size: 15px;
+            margin-bottom: 35px;
         }
         .auth-form {
             display: flex;
             flex-direction: column;
-            gap: 15px;
+            gap: 20px;
         }
-        .auth-form input {
+        .input-group {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+        .input-icon {
+            position: absolute;
+            right: 15px;
+            color: var(--text-secondary, #95a5a6);
+            transition: color 0.3s;
+            pointer-events: none;
+        }
+        .input-group input {
             width: 100%;
+            background-color: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            color: #ffffff;
+            padding: 16px 45px 16px 15px;
+            border-radius: 12px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            outline: none;
+        }
+        .input-group input::placeholder {
+            color: rgba(255, 255, 255, 0.3);
+        }
+        .input-group input:focus {
+            background-color: rgba(255, 255, 255, 0.06);
+            border-color: var(--primary-color, #9b59b6);
+            box-shadow: 0 0 0 4px rgba(155, 89, 182, 0.1);
+        }
+        .input-group input:focus + .input-icon {
+            color: var(--primary-color, #9b59b6);
+        }
+        .auth-btn {
+            background: linear-gradient(135deg, var(--primary-color, #9b59b6), #8e44ad);
+            color: white;
+            border: none;
+            padding: 16px;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-top: 10px;
+            font-family: inherit;
+        }
+        .auth-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(155, 89, 182, 0.4);
+        }
+        .auth-btn:active {
+            transform: translateY(0);
+        }
+        .auth-separator {
+            margin: 30px 0 20px;
+            height: 1px;
+            background: linear-gradient(to right, transparent, rgba(255,255,255,0.1), transparent);
         }
         .auth-toggle {
-            margin-top: 20px;
-            color: var(--text-secondary);
-            font-size: 14px;
+            color: var(--text-secondary, #95a5a6);
+            font-size: 15px;
             cursor: pointer;
             transition: color 0.3s;
+            display: inline-block;
+        }
+        .auth-toggle span {
+            color: var(--primary-color, #9b59b6);
+            font-weight: 600;
+            margin-right: 5px;
         }
         .auth-toggle:hover {
-            color: var(--primary-color);
+            color: #ffffff;
         }
         #error-message {
-            color: var(--error-color);
-            margin-top: 15px;
+            color: #ff6b6b;
+            background: rgba(255, 107, 107, 0.1);
+            padding: 10px;
+            border-radius: 8px;
+            margin-top: 20px;
             font-size: 14px;
             display: none;
+        }
+        @media (max-width: 480px) {
+            .auth-container {
+                padding: 40px 25px;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="auth-container">
-        <div class="auth-logo">💪</div>
-        <h1 class="auth-title" id="form-title">התחברות</h1>
-        
-        <form class="auth-form" id="auth-form">
-            <input type="email" id="email" placeholder="אימייל" required>
-            <input type="password" id="password" placeholder="סיסמה" required minlength="6">
-            <button type="submit" class="btn btn-primary" id="submit-btn">היכנס</button>
-        </form>
-        
-        <div id="error-message"></div>
-        <div class="auth-toggle" id="toggle-mode">אין לך חשבון? הירשם כאן</div>
+    <div class="auth-wrapper">
+        <div class="auth-container">
+            <div class="auth-content">
+                <div class="auth-logo">💪</div>
+                <h1 class="auth-title" id="form-title">ברוך הבא</h1>
+                <p class="auth-subtitle" id="form-subtitle">התחבר לחשבון שלך למערכת הכושר</p>
+                
+                <form class="auth-form" id="auth-form">
+                    <div class="input-group">
+                        <input type="email" id="email" placeholder="אימייל" required>
+                        <svg class="input-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+                    </div>
+                    <div class="input-group">
+                        <input type="password" id="password" placeholder="סיסמה" required minlength="6">
+                        <svg class="input-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"></path></svg>
+                    </div>
+                    <button type="submit" class="auth-btn" id="submit-btn">היכנס</button>
+                </form>
+                
+                <div id="error-message"></div>
+                
+                <div class="auth-separator"></div>
+                <div class="auth-toggle" id="toggle-mode">עוד לא רשום?<span>צור חשבון כאן</span></div>
+            </div>
+        </div>
     </div>
 
     <script src="login.js?v=3"></script>

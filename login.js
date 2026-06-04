@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let isLogin = true;
     
     const formTitle = document.getElementById('form-title');
+    const formSubtitle = document.getElementById('form-subtitle');
     const submitBtn = document.getElementById('submit-btn');
     const toggleMode = document.getElementById('toggle-mode');
     const authForm = document.getElementById('auth-form');
@@ -16,13 +17,15 @@ document.addEventListener('DOMContentLoaded', () => {
     toggleMode.addEventListener('click', () => {
         isLogin = !isLogin;
         if (isLogin) {
-            formTitle.textContent = 'התחברות';
+            formTitle.textContent = 'ברוך הבא';
+            formSubtitle.textContent = 'התחבר לחשבון שלך למערכת הכושר';
             submitBtn.textContent = 'היכנס';
-            toggleMode.textContent = 'אין לך חשבון? הירשם כאן';
+            toggleMode.innerHTML = 'עוד לא רשום?<span>צור חשבון כאן</span>';
         } else {
-            formTitle.textContent = 'הרשמה';
-            submitBtn.textContent = 'צור חשבון';
-            toggleMode.textContent = 'כבר יש לך חשבון? היכנס כאן';
+            formTitle.textContent = 'צור חשבון חדש';
+            formSubtitle.textContent = 'הירשם והתחל לבנות את תוכנית האימונים שלך';
+            submitBtn.textContent = 'הרשם עכשיו';
+            toggleMode.innerHTML = 'כבר יש לך חשבון?<span>היכנס כאן</span>';
         }
         errorMessage.style.display = 'none';
     });
