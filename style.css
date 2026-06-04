@@ -315,3 +315,33 @@ input[type="number"]:focus, select:focus, textarea:focus {
     opacity: 0.5;
     cursor: not-allowed;
 }
+
+@media (max-width: 768px) {
+    .measurements-grid {
+        grid-template-columns: 1fr;
+    }
+    input, select {
+        height: 52px;
+        font-size: 16px; /* Prevents iOS zoom */
+    }
+    textarea {
+        font-size: 16px;
+    }
+    .wizard-footer {
+        flex-direction: column-reverse;
+        gap: 15px;
+        align-items: center;
+    }
+    .btn {
+        width: 80%;
+        max-width: 250px;
+        height: 52px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin: 0 auto;
+    }
+    .auth-container {
+        padding: 30px 20px;
+    }
+}
