@@ -74,21 +74,94 @@
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                     ייצוא תפריט ל-PDF
                 </button>
-                <div class="program-card nutrition-card">
+                <div class="program-card nutrition-card" id="nutrition-tracker-card">
                     <div class="card-header">
-                        <h3>🍏 תפריט תזונה להיום</h3>
-                        <span class="badge" style="background-color: #2ecc71;">מוכן (AI)</span>
+                        <h3>📊 מעקב מנות יומי</h3>
+                        <span class="badge" style="background-color: #2ecc71;">תקציב אישי</span>
                     </div>
                     <div class="card-body">
-                        <div class="macro-summary">
+                        <div class="macro-summary" style="margin-bottom: 25px;">
                             <div class="macro"><strong id="val-calories">--</strong> קלוריות</div>
                             <div class="macro"><strong id="val-protein">--</strong> חלבון</div>
                             <div class="macro"><strong id="val-carbs">--</strong> פחמימה</div>
                             <div class="macro"><strong id="val-fats">--</strong> שומן</div>
                         </div>
-                        <ul class="meal-list" id="menu-list">
-                            <li>טוען תפריט...</li>
-                        </ul>
+                        
+                        <div class="tracker-grid">
+                            <!-- Carbs Tracker -->
+                            <div class="tracker-item">
+                                <div class="tracker-label">פחמימות</div>
+                                <div class="tracker-controls">
+                                    <button class="btn-track minus" data-type="carbs">-</button>
+                                    <div class="tracker-count" id="count-carbs" data-consumed="0" data-budget="0">
+                                        <span class="consumed">0</span> / <span class="budget">0</span>
+                                    </div>
+                                    <button class="btn-track plus" data-type="carbs">+</button>
+                                </div>
+                            </div>
+                            <!-- Protein Tracker -->
+                            <div class="tracker-item">
+                                <div class="tracker-label">חלבונים</div>
+                                <div class="tracker-controls">
+                                    <button class="btn-track minus" data-type="protein">-</button>
+                                    <div class="tracker-count" id="count-protein" data-consumed="0" data-budget="0">
+                                        <span class="consumed">0</span> / <span class="budget">0</span>
+                                    </div>
+                                    <button class="btn-track plus" data-type="protein">+</button>
+                                </div>
+                            </div>
+                            <!-- Fats Tracker -->
+                            <div class="tracker-item">
+                                <div class="tracker-label">שומנים</div>
+                                <div class="tracker-controls">
+                                    <button class="btn-track minus" data-type="fats">-</button>
+                                    <div class="tracker-count" id="count-fats" data-consumed="0" data-budget="0">
+                                        <span class="consumed">0</span> / <span class="budget">0</span>
+                                    </div>
+                                    <button class="btn-track plus" data-type="fats">+</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="text-align: center; margin-top: 25px;">
+                            <button id="btn-reset-tracker" class="btn btn-secondary" style="font-size: 14px; padding: 8px 16px;">איפוס צריכה יומית</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="exchange-lists-container" style="margin-top: 20px;">
+                    <!-- Carbs Bank -->
+                    <div class="program-card exchange-card">
+                        <div class="card-header">
+                            <h3>🍞 בנק פחמימות</h3>
+                        </div>
+                        <div class="card-body">
+                            <ul class="meal-list" id="bank-carbs">
+                                <li>טוען בנק פחמימות...</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <!-- Protein Bank -->
+                    <div class="program-card exchange-card">
+                        <div class="card-header">
+                            <h3>🍗 בנק חלבונים</h3>
+                        </div>
+                        <div class="card-body">
+                            <ul class="meal-list" id="bank-protein">
+                                <li>טוען בנק חלבונים...</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <!-- Fats Bank -->
+                    <div class="program-card exchange-card">
+                        <div class="card-header">
+                            <h3>🥑 בנק שומנים</h3>
+                        </div>
+                        <div class="card-body">
+                            <ul class="meal-list" id="bank-fats">
+                                <li>טוען בנק שומנים...</li>
+                            </ul>
+                        </div>
                     </div>
                 </div>
             </div>

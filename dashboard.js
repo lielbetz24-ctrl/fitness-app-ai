@@ -70,20 +70,117 @@ document.addEventListener('DOMContentLoaded', async () => {
                     document.getElementById('val-fats').textContent = `${data.fats_grams}g`;
                 }
 
-                // Parse and render Daily Menu JSON
-                if (data.daily_menu) {
+                // --- Nutrition Tracker Logic ---
+                if (data.portion_budget) {
                     try {
-                        const menuArray = JSON.parse(data.daily_menu);
-                        const menuListEl = document.getElementById('menu-list');
-                        menuListEl.innerHTML = '';
+                        const budget = JSON.parse(data.portion_budget);
                         
-                        menuArray.forEach(mealObj => {
-                            const li = document.createElement('li');
-                            li.innerHTML = `<strong>${mealObj.meal}:</strong> ${mealObj.items}`;
-                            menuListEl.appendChild(li);
+                        // Set budget labels
+                        document.querySelector('#count-carbs .budget').textContent = budget.carbs || 0;
+                        document.querySelector('#count-protein .budget').textContent = budget.protein || 0;
+                        document.querySelector('#count-fats .budget').textContent = budget.fats || 0;
+
+                        document.getElementById('count-carbs').setAttribute('data-budget', budget.carbs || 0);
+                        document.getElementById('count-protein').setAttribute('data-budget', budget.protein || 0);
+                        document.getElementById('count-fats').setAttribute('data-budget', budget.fats || 0);
+
+                        // LocalStorage State Management
+                        const userIdStr = data.id || 'guest';
+                        const storageKey = `nutrition_tracker_${userIdStr}`;
+                        
+                        let trackerState = JSON.parse(localStorage.getItem(storageKey)) || {
+                            date: new Date().toLocaleDateString(),
+                            consumed: { carbs: 0, protein: 0, fats: 0 }
+                        };
+
+                        // Auto Reset at Midnight
+                        if (trackerState.date !== new Date().toLocaleDateString()) {
+                            trackerState = {
+                                date: new Date().toLocaleDateString(),
+                                consumed: { carbs: 0, protein: 0, fats: 0 }
+                            };
+                            localStorage.setItem(storageKey, JSON.stringify(trackerState));
+                        }
+
+                        // Update UI with consumed amounts
+                        const updateTrackerUI = () => {
+                            ['carbs', 'protein', 'fats'].forEach(type => {
+                                const countEl = document.getElementById(`count-${type}`);
+                                if (!countEl) return;
+                                
+                                const consumedVal = trackerState.consumed[type];
+                                const budgetVal = parseInt(countEl.getAttribute('data-budget')) || 0;
+                                
+                                countEl.querySelector('.consumed').textContent = consumedVal;
+                                
+                                if (consumedVal > budgetVal) {
+                                    countEl.classList.add('over-budget');
+                                } else {
+                                    countEl.classList.remove('over-budget');
+                                }
+                            });
+                        };
+                        updateTrackerUI();
+
+                        // Event Listeners for + / -
+                        document.querySelectorAll('.btn-track').forEach(btn => {
+                            // remove existing listener if any to avoid duplicates in case of re-render
+                            const newBtn = btn.cloneNode(true);
+                            btn.parentNode.replaceChild(newBtn, btn);
+                            
+                            newBtn.addEventListener('click', (e) => {
+                                const type = e.target.getAttribute('data-type');
+                                const isPlus = e.target.classList.contains('plus');
+                                
+                                if (isPlus) {
+                                    trackerState.consumed[type]++;
+                                } else {
+                                    if (trackerState.consumed[type] > 0) {
+                                        trackerState.consumed[type]--;
+                                    }
+                                }
+                                
+                                localStorage.setItem(storageKey, JSON.stringify(trackerState));
+                                updateTrackerUI();
+                            });
+                        });
+
+                        // Reset Button
+                        const btnReset = document.getElementById('btn-reset-tracker');
+                        if (btnReset) {
+                            const newBtnReset = btnReset.cloneNode(true);
+                            btnReset.parentNode.replaceChild(newBtnReset, btnReset);
+                            newBtnReset.addEventListener('click', () => {
+                                if(confirm('האם אתה בטוח שברצונך לאפס את המונים להיום?')) {
+                                    trackerState.consumed = { carbs: 0, protein: 0, fats: 0 };
+                                    localStorage.setItem(storageKey, JSON.stringify(trackerState));
+                                    updateTrackerUI();
+                                }
+                            });
+                        }
+
+                    } catch (e) {
+                        console.error('Failed to parse portion budget', e);
+                    }
+                }
+
+                // Render Exchange Lists
+                if (data.portion_bank) {
+                    try {
+                        const bank = JSON.parse(data.portion_bank);
+                        ['carbs', 'protein', 'fats'].forEach(type => {
+                            const listEl = document.getElementById(`bank-${type}`);
+                            if (listEl && bank[type] && Array.isArray(bank[type])) {
+                                listEl.innerHTML = '';
+                                bank[type].forEach(item => {
+                                    const li = document.createElement('li');
+                                    li.innerHTML = `<strong>${item.name}</strong> - ${item.amount}`;
+                                    listEl.appendChild(li);
+                                });
+                            }
                         });
                     } catch (e) {
-                        console.error('Failed to parse daily menu', e);
+                        console.error('Failed to parse portion bank', e);
                     }
                 }
 
