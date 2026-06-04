@@ -71,10 +71,24 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
 
                 // --- Nutrition Tracker Logic ---
-                if (data.portion_budget) {
+                if (data.portion_budget && data.portion_bank) {
                     try {
                         const budget = JSON.parse(data.portion_budget);
                         
+                        // Translation Layer
+                        if (data.protein_grams && budget.protein) {
+                            const gramsPerPortion = Math.round(data.protein_grams / budget.protein);
+                            document.getElementById('trans-protein').textContent = `שווה ערך ל-${budget.protein} מנות (כ-${gramsPerPortion}g למנה)`;
+                        }
+                        if (data.carbs_grams && budget.carbs) {
+                            const gramsPerPortion = Math.round(data.carbs_grams / budget.carbs);
+                            document.getElementById('trans-carbs').textContent = `שווה ערך ל-${budget.carbs} מנות (כ-${gramsPerPortion}g למנה)`;
+                        }
+                        if (data.fats_grams && budget.fats) {
+                            const gramsPerPortion = Math.round(data.fats_grams / budget.fats);
+                            document.getElementById('trans-fats').textContent = `שווה ערך ל-${budget.fats} מנות (כ-${gramsPerPortion}g למנה)`;
+                        }
+
                         // Set budget labels
                         document.querySelector('#count-carbs .budget').textContent = budget.carbs || 0;
                         document.querySelector('#count-protein .budget').textContent = budget.protein || 0;
@@ -159,14 +173,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                             });
                         }
 
-                    } catch (e) {
-                        console.error('Failed to parse portion budget', e);
-                    }
-                }
-
-                // Render Exchange Lists
-                if (data.portion_bank) {
-                    try {
+                        // Render Exchange Lists
                         const bank = JSON.parse(data.portion_bank);
                         ['carbs', 'protein', 'fats'].forEach(type => {
                             const listEl = document.getElementById(`bank-${type}`);
@@ -179,9 +186,17 @@ document.addEventListener('DOMContentLoaded', async () => {
                                 });
                             }
                         });
+
                     } catch (e) {
-                        console.error('Failed to parse portion bank', e);
+                        console.error('Failed to parse portion budget or bank', e);
                     }
+                } else {
+                    // Fallback for missing portion system
+                    document.getElementById('nutrition-tracker-card').style.display = 'none';
+                    const elContainer = document.getElementById('exchange-lists-container');
+                    if (elContainer) elContainer.style.display = 'none';
+                    document.getElementById('btn-export-nutrition').style.display = 'none';
+                    document.getElementById('nutrition-fallback-message').style.display = 'block';
                 }
 
                 // Parse and render Workout Plan JSON
