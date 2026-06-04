@@ -6,6 +6,8 @@ const path = require('path');
 const fs = require('fs');
 const mongoose = require('mongoose');
 const { GoogleGenAI } = require('@google/genai');
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -49,6 +51,8 @@ mongoose.connection.on('error', err => {
 
 // Mongoose Schemas (Dynamic & Flexible)
 const userSchema = new mongoose.Schema({
+    email: { type: String, required: true, unique: true, lowercase: true },
+    password: { type: String, required: true },
     age: Number,
     gender: String,
     nutrition_preferences: mongoose.Schema.Types.Mixed, // e.g. { diet, foodPrefs }
@@ -57,7 +61,70 @@ const userSchema = new mongoose.Schema({
     visual_goals: String,
     created_at: { type: Date, default: Date.now }
 });
+
+userSchema.pre('save', async function(next) {
+    if (!this.isModified('password')) return next();
+    try {
+        const salt = await bcrypt.genSalt(10);
+        this.password = await bcrypt.hash(this.password, salt);
+        next();
+    } catch (err) {
+        next(err);
+    }
+});
+
 const User = mongoose.model('User', userSchema);
+
+// Middleware
+function authenticateToken(req, res, next) {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+    
+    if (!token) return res.status(401).json({ error: 'גישה נדחתה. חסר טוקן אימות.' });
+
+    jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret_for_dev', (err, user) => {
+        if (err) return res.status(403).json({ error: 'טוקן לא חוקי או פג תוקף.' });
+        req.user = user;
+        next();
+    });
+}
+
+// Auth Routes
+app.post('/api/auth/register', async (req, res) => {
+    try {
+        const { email, password } = req.body;
+        if (!email || !password) return res.status(400).json({ error: 'חסרים אימייל או סיסמה' });
+        
+        const existingUser = await User.findOne({ email: email.toLowerCase() });
+        if (existingUser) return res.status(400).json({ error: 'משתמש עם אימייל זה כבר קיים.' });
+        
+        const user = new User({ email: email.toLowerCase(), password });
+        await user.save();
+        
+        const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET || 'fallback_secret_for_dev', { expiresIn: '30d' });
+        res.json({ token, userId: user._id });
+    } catch (e) {
+        res.status(500).json({ error: 'שגיאת שרת פנימית ברישום.' });
+    }
+});
+
+app.post('/api/auth/login', async (req, res) => {
+    try {
+        const { email, password } = req.body;
+        if (!email || !password) return res.status(400).json({ error: 'חסרים אימייל או סיסמה' });
+        
+        const user = await User.findOne({ email: email.toLowerCase() });
+        if (!user) return res.status(400).json({ error: 'משתמש לא נמצא.' });
+        
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch) return res.status(400).json({ error: 'סיסמה שגויה.' });
+        
+        const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET || 'fallback_secret_for_dev', { expiresIn: '30d' });
+        res.json({ token, userId: user._id });
+    } catch (e) {
+        res.status(500).json({ error: 'שגיאת שרת פנימית בהתחברות.' });
+    }
+});
 
 const biweeklyTrackingSchema = new mongoose.Schema({
     user_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
@@ -232,7 +299,7 @@ const cpUpload = upload.fields([
     { name: 'image-front', maxCount: 1 }, { name: 'image-back', maxCount: 1 }, { name: 'image-side', maxCount: 1 }
 ]);
 
-app.post('/api/onboarding', cpUpload, async (req, res) => {
+app.post('/api/onboarding', authenticateToken, cpUpload, async (req, res) => {
     try {
         const data = req.body;
         const files = req.files || {};
@@ -253,18 +320,19 @@ app.post('/api/onboarding', cpUpload, async (req, res) => {
         const imageBackUrl = files['image-back'] ? `/uploads/${files['image-back'][0].filename}` : null;
         const imageSideUrl = files['image-side'] ? `/uploads/${files['image-side'][0].filename}` : null;
 
-        const newUser = new User({
+        const user = await User.findByIdAndUpdate(req.user.id, {
             age: parseInt(data.age),
             gender: data.gender,
             nutrition_preferences: { diet: data.diet, foodPrefs: data['food-prefs'] },
             workout_days_per_week: parseInt(data['workout-days']),
             meals_per_day: parseInt(data['meals-per-day']),
             visual_goals: data['visual-goals']
-        });
-        await newUser.save();
+        }, { new: true });
+        
+        if (!user) return res.status(404).json({ error: 'משתמש לא נמצא במערכת.' });
 
         const newTracking = new BiweeklyTracking({
-            user_id: newUser._id,
+            user_id: user._id,
             weight: parseFloat(data.weight),
             waist_circumference: parseFloat(data.waist),
             shoulders_circumference: parseFloat(data.shoulders),
@@ -277,7 +345,7 @@ app.post('/api/onboarding', cpUpload, async (req, res) => {
         await newTracking.save();
 
         const newProgram = new Program({
-            user_id: newUser._id,
+            user_id: user._id,
             target_calories: aiProgram.targetCalories,
             protein_grams: aiProgram.proteinGrams,
             carbs_grams: aiProgram.carbsGrams,
@@ -288,18 +356,18 @@ app.post('/api/onboarding', cpUpload, async (req, res) => {
         });
         await newProgram.save();
 
-        return res.status(200).json({ message: 'הנתונים נשמרו בהצלחה', userId: newUser._id.toString() });
+        return res.status(200).json({ message: 'הנתונים נשמרו בהצלחה', userId: user._id.toString() });
     } catch (error) {
         console.error("Server error during onboarding:", error);
         res.status(500).json({ error: 'שגיאת שרת פנימית. נסה שוב.' });
     }
 });
 
-app.post('/api/checkin', cpUpload, async (req, res) => {
+app.post('/api/checkin', authenticateToken, cpUpload, async (req, res) => {
     try {
         const data = req.body;
         const files = req.files || {};
-        const userId = data.userId;
+        const userId = req.user.id;
 
         if (!userId || !data.weight) {
             return res.status(400).json({ error: 'חסרים נתוני משתמש או משקל נוכחי.' });
@@ -367,9 +435,10 @@ app.post('/api/checkin', cpUpload, async (req, res) => {
     }
 });
 
-app.post('/api/log-workout', async (req, res) => {
+app.post('/api/log-workout', authenticateToken, async (req, res) => {
     try {
-        const { userId, workoutData } = req.body;
+        const { workoutData } = req.body;
+        const userId = req.user.id;
         
         if (!userId || !workoutData) {
             return res.status(400).json({ error: 'חסרים מזהה משתמש או נתוני אימון.' });
@@ -401,9 +470,9 @@ app.post('/api/log-workout', async (req, res) => {
     }
 });
 
-app.get('/api/user/:id', async (req, res) => {
+app.get('/api/user/me', authenticateToken, async (req, res) => {
     try {
-        const userId = req.params.id;
+        const userId = req.user.id;
         
         const user = await User.findById(userId);
         if (!user) { return res.status(404).json({ error: 'משתמש לא נמצא.' }); }

@@ -1,4 +1,10 @@
 document.addEventListener('DOMContentLoaded', () => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+        window.location.href = 'login.html';
+        return;
+    }
+
     const steps = document.querySelectorAll('.wizard-step');
     const stepIndicators = document.querySelectorAll('.step');
     const progressBar = document.getElementById('progress-bar');
@@ -69,14 +75,17 @@ document.addEventListener('DOMContentLoaded', () => {
                     // Send data to the Express backend
                     const response = await fetch('/api/onboarding', {
                         method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                        },
                         body: formData // Fetch API automatically sets Content-Type to multipart/form-data with bounds
                     });
 
                     const result = await response.json();
 
                     if (response.ok) {
-                        // Redirect automatically to the new Dashboard with the generated userId
-                        window.location.href = `/dashboard.html?userId=${result.userId}`;
+                        // Redirect automatically to the new Dashboard
+                        window.location.href = '/dashboard.html';
                     } else {
                         alert('שגיאה: ' + (result.error || 'אירעה בעיה בשמירת הנתונים.'));
                     }

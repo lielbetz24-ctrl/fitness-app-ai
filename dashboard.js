@@ -1,7 +1,9 @@
 document.addEventListener('DOMContentLoaded', async () => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const userId = urlParams.get('userId');
-
+    const token = localStorage.getItem('token');
+    if (!token) {
+        window.location.href = 'login.html';
+        return;
+    }
     const totalDays = 14;
     let daysPassed = 0; 
     let daysLeft = totalDays;
@@ -13,11 +15,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     daysLeftEl.textContent = daysLeft;
     setTimeout(() => { timerProgressEl.style.width = '0%'; }, 100);
 
-    if (userId) {
-        try {
-            const response = await fetch(`/api/user/${userId}`);
-            if (response.ok) {
-                const data = await response.json();
+    try {
+        const response = await fetch(`/api/user/me`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            
+            // Redirect to onboarding if no program exists
+            if (!data.target_calories && !data.workout_plan) {
+                window.location.href = 'index.html';
+                return;
+            }
                 
                 // Profile
                 document.getElementById('val-weight').textContent = `${data.weight || '--'} ק"ג`;
@@ -181,7 +193,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                                 saveBtn.textContent = 'שומר נתונים...';
 
                                 const payload = {
-                                    userId: userId,
                                     workoutData: {
                                         date: new Date().toISOString(),
                                         workout_day: dayPlan.day,
@@ -193,7 +204,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                                 try {
                                     const res = await fetch('/api/log-workout', {
                                         method: 'POST',
-                                        headers: { 'Content-Type': 'application/json' },
+                                        headers: { 
+                                            'Content-Type': 'application/json',
+                                            'Authorization': `Bearer ${token}`
+                                        },
                                         body: JSON.stringify(payload)
                                     });
                                     
@@ -258,10 +272,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                     }
                 }
 
-            }
-        } catch (error) {
-            console.error('Network error', error);
+        } else {
+            // Unauthenticated or not found
+            localStorage.removeItem('token');
+            window.location.href = 'login.html';
         }
+    } catch (error) {
+        console.error('Network error', error);
     }
 
     // Modal Logic
@@ -271,7 +288,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const btnSubmitCheckin = document.getElementById('btn-submit-checkin');
 
     btnUpdate.addEventListener('click', () => {
-        document.getElementById('checkin-userId').value = userId;
         modal.style.display = 'flex';
     });
 
@@ -305,6 +321,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             const formData = new FormData(checkinForm);
             const response = await fetch('/api/checkin', {
                 method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                },
                 body: formData
             });
 
@@ -346,4 +365,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             document.getElementById(targetId).classList.add('active');
         });
     });
+
+    // Logout
+    const btnLogout = document.getElementById('btn-logout');
+    if (btnLogout) {
+        btnLogout.addEventListener('click', () => {
+            localStorage.removeItem('token');
+            window.location.href = 'login.html';
+        });
+    }
 });

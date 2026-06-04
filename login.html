@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>התחברות - FitAI</title>
+    <meta name="theme-color" content="#3498db">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="/icon.svg">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <style>
+        .auth-container {
+            width: 100%;
+            max-width: 400px;
+            background-color: var(--card-bg);
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            text-align: center;
+        }
+        .auth-logo {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+        .auth-title {
+            color: var(--primary-color);
+            margin-bottom: 30px;
+        }
+        .auth-form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .auth-form input {
+            width: 100%;
+        }
+        .auth-toggle {
+            margin-top: 20px;
+            color: var(--text-secondary);
+            font-size: 14px;
+            cursor: pointer;
+            transition: color 0.3s;
+        }
+        .auth-toggle:hover {
+            color: var(--primary-color);
+        }
+        #error-message {
+            color: var(--error-color);
+            margin-top: 15px;
+            font-size: 14px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="auth-container">
+        <div class="auth-logo">💪</div>
+        <h1 class="auth-title" id="form-title">התחברות</h1>
+        
+        <form class="auth-form" id="auth-form">
+            <input type="email" id="email" placeholder="אימייל" required>
+            <input type="password" id="password" placeholder="סיסמה" required minlength="6">
+            <button type="submit" class="btn btn-primary" id="submit-btn">היכנס</button>
+        </form>
+        
+        <div id="error-message"></div>
+        <div class="auth-toggle" id="toggle-mode">אין לך חשבון? הירשם כאן</div>
+    </div>
+
+    <script src="login.js"></script>
+</body>
+</html>

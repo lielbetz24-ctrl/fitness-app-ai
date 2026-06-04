@@ -16,7 +16,8 @@
 </head>
 <body>
     <div class="dashboard-container">
-        <header class="dashboard-header">
+        <header class="dashboard-header" style="position: relative;">
+            <button id="btn-logout" class="btn btn-secondary" style="position: absolute; top: 0; left: 0; padding: 6px 12px; font-size: 14px;">התנתק</button>
             <h1>האזור האישי שלך</h1>
             <p>התוכנית המותאמת שנוצרה על ידי מנוע ה-AI שלנו במיוחד בשבילך</p>
         </header>
@@ -150,11 +151,10 @@
                     <div class="file-upload-wrapper"><label>צד</label><div class="file-upload-box"><span>העלאה</span><input type="file" name="image-side" accept="image/*"></div></div>
                 </div>
 
-                <div class="wizard-footer" style="margin-top: 20px;">
-                    <button type="button" id="btn-cancel-checkin" class="btn btn-secondary">ביטול</button>
-                    <button type="submit" id="btn-submit-checkin" class="btn btn-primary">שלח עדכון ל-AI</button>
-                </div>
-            </form>
+                    <button type="submit" id="btn-submit-checkin" class="btn btn-primary" style="margin-top: 15px; width: 100%;">שלח עדכון ל-AI</button>
+                    <button type="button" id="btn-cancel-checkin" class="btn btn-secondary" style="margin-top: 10px; width: 100%;">ביטול</button>
+                </form>
+            </div>
         </div>
     </div>
 
