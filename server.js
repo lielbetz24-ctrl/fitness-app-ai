@@ -569,6 +569,7 @@ app.get('/api/user/me', authenticateToken, async (req, res) => {
         
         const result = {
             id: user._id.toString(), // Map _id to id for frontend compatibility
+            isOnboardingCompleted: user.isOnboardingCompleted,
             visual_goals: user.visual_goals,
             workout_days_per_week: user.workout_days_per_week,
             weight: tracking ? tracking.weight : null,

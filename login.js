@@ -1,7 +1,38 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // Redirect to dashboard if already logged in
-    if (localStorage.getItem('token')) {
-        window.location.href = 'dashboard.html';
+    const token = localStorage.getItem('token');
+    const authForm = document.getElementById('auth-form');
+    const toggleMode = document.getElementById('toggle-mode');
+    const loadingSpinner = document.getElementById('loading-spinner');
+
+    if (token) {
+        if (authForm) authForm.style.display = 'none';
+        if (toggleMode) toggleMode.style.display = 'none';
+        if (loadingSpinner) loadingSpinner.style.display = 'block';
+
+        (async () => {
+            try {
+                const res = await fetch('/api/user/me', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.isOnboardingCompleted) {
+                        window.location.replace('dashboard.html');
+                    } else {
+                        window.location.replace('index.html');
+                    }
+                    return;
+                }
+            } catch (e) {
+                console.error("Token validation failed", e);
+            }
+            
+            localStorage.removeItem('token');
+            if (loadingSpinner) loadingSpinner.style.display = 'none';
+            if (authForm) authForm.style.display = 'flex';
+            if (toggleMode) toggleMode.style.display = 'block';
+        })();
         return;
     }
 
@@ -10,8 +41,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const formTitle = document.getElementById('form-title');
     const formSubtitle = document.getElementById('form-subtitle');
     const submitBtn = document.getElementById('submit-btn');
-    const toggleMode = document.getElementById('toggle-mode');
-    const authForm = document.getElementById('auth-form');
     const errorMessage = document.getElementById('error-message');
 
     toggleMode.addEventListener('click', () => {

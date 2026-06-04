@@ -173,6 +173,14 @@
                 <h1 class="auth-title" id="form-title">ברוך הבא</h1>
                 <p class="auth-subtitle" id="form-subtitle">התחבר לחשבון שלך למערכת הכושר</p>
                 
+                <style>
+                    @keyframes spin { 100% { transform: rotate(360deg); } }
+                </style>
+                <div id="loading-spinner" style="display: none; padding: 40px 0;">
+                    <div class="loader" style="margin: 0 auto; width: 40px; height: 40px; border: 4px solid rgba(255,255,255,0.1); border-left-color: var(--primary-color, #9b59b6); border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                    <p style="margin-top: 15px; color: var(--text-secondary, #95a5a6);">מתחבר למערכת...</p>
+                </div>
+                
                 <form class="auth-form" id="auth-form">
                     <div class="input-group">
                         <input type="email" id="email" placeholder="אימייל" required>
