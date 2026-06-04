@@ -205,13 +205,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                     } catch (e) {
                         console.error('Failed to parse portion budget or bank', e);
                     }
-                } else {
-                    // Fallback for missing portion system
-                    document.getElementById('nutrition-tracker-card').style.display = 'none';
-                    const elContainer = document.getElementById('exchange-lists-container');
-                    if (elContainer) elContainer.style.display = 'none';
-                    document.getElementById('btn-export-nutrition').style.display = 'none';
-                    document.getElementById('nutrition-fallback-message').style.display = 'block';
                 }
 
                 // Parse and render Workout Plan JSON

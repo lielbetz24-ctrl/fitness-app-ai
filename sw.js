@@ -1,14 +1,14 @@
-const CACHE_NAME = 'fitness-v4';
+const CACHE_NAME = 'fitness-v5';
 const urlsToCache = [
   '/',
-  '/index.html?v=4',
-  '/dashboard.html?v=4',
-  '/login.html?v=4',
-  '/style.css?v=4',
-  '/dashboard.css?v=4',
-  '/script.js?v=4',
-  '/dashboard.js?v=4',
-  '/login.js?v=4',
+  '/index.html?v=5',
+  '/dashboard.html?v=5',
+  '/login.html?v=5',
+  '/style.css?v=5',
+  '/dashboard.css?v=5',
+  '/script.js?v=5',
+  '/dashboard.js?v=5',
+  '/login.js?v=5',
   '/icon.svg',
   '/manifest.json'
 ];

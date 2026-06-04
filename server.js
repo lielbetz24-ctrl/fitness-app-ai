@@ -49,6 +49,9 @@ mongoose.connection.on('error', err => {
     console.error('MongoDB connection lost/error:', err.message);
 });
 
+// Data Versioning
+const CURRENT_PROGRAM_VERSION = 2;
+
 // Mongoose Schemas (Dynamic & Flexible)
 const userSchema = new mongoose.Schema({
     email: { type: String, required: true, unique: true, lowercase: true },
@@ -56,6 +59,7 @@ const userSchema = new mongoose.Schema({
     isOnboardingCompleted: { type: Boolean, default: false },
     age: Number,
     gender: String,
+    height: Number,
     nutrition_preferences: mongoose.Schema.Types.Mixed, // e.g. { diet, foodPrefs }
     workout_days_per_week: Number,
     meals_per_day: Number,
@@ -157,6 +161,7 @@ const programSchema = new mongoose.Schema({
     workout_logs: [mongoose.Schema.Types.Mixed], // Progressive Overload tracking
     ai_feedback: String,
     is_active: { type: Boolean, default: true },
+    schema_version: { type: Number, default: 1 },
     created_at: { type: Date, default: Date.now }
 });
 const Program = mongoose.model('Program', programSchema);
@@ -221,6 +226,7 @@ async function generateProgramAI(data) {
     
     מבנה ה-JSON המחייב (SCHEMA קשיח - אין לחרוג ממנו, חובה להשתמש במפתחות אלו בדיוק, והערכים בתקציב חייבים להיות מספרים שלמים Int בלבד):
     {
+        "schema_version": ${CURRENT_PROGRAM_VERSION},
         "targetCalories": <מספר שלם>,
         "proteinGrams": <מספר שלם>,
         "carbsGrams": <מספר שלם>,
@@ -277,6 +283,7 @@ async function generateCheckinAI(oldProgram, newTracking, feelings, workoutLogs 
     עליך לספק פידבק מקצועי קצר ומעודד (בעברית), ולעדכן את הקלוריות והתוכנית בהתאם.
     החזר אך ורק אובייקט JSON בתבנית הבאה (SCHEMA קשיח, מספרים שלמים בלבד בתקציב):
     {
+        "schema_version": ${CURRENT_PROGRAM_VERSION},
         "ai_feedback": "טקסט הפידבק החכם שלך...",
         "targetCalories": <מספר שלם>,
         "proteinGrams": <מספר שלם>,
@@ -351,6 +358,7 @@ app.post('/api/onboarding', authenticateToken, cpUpload, async (req, res) => {
         const user = await User.findByIdAndUpdate(req.user.id, {
             age: parseInt(data.age),
             gender: data.gender,
+            height: parseFloat(data.height),
             nutrition_preferences: { diet: data.diet, foodPrefs: data['food-prefs'] },
             workout_days_per_week: parseInt(data['workout-days']),
             meals_per_day: parseInt(data['meals-per-day']),
@@ -375,6 +383,7 @@ app.post('/api/onboarding', authenticateToken, cpUpload, async (req, res) => {
 
         const newProgram = new Program({
             user_id: user._id,
+            schema_version: aiProgram.schema_version || CURRENT_PROGRAM_VERSION,
             target_calories: aiProgram.targetCalories,
             protein_grams: aiProgram.proteinGrams,
             carbs_grams: aiProgram.carbsGrams,
@@ -448,6 +457,7 @@ app.post('/api/checkin', authenticateToken, cpUpload, async (req, res) => {
         // Insert new program
         const newProgram = new Program({
             user_id: userId,
+            schema_version: aiCheckin.schema_version || CURRENT_PROGRAM_VERSION,
             target_calories: aiCheckin.targetCalories,
             protein_grams: aiCheckin.proteinGrams,
             carbs_grams: aiCheckin.carbsGrams,
@@ -511,7 +521,51 @@ app.get('/api/user/me', authenticateToken, async (req, res) => {
         if (!user) { return res.status(404).json({ error: 'משתמש לא נמצא.' }); }
         
         const tracking = await BiweeklyTracking.findOne({ user_id: userId }).sort({ created_at: -1 });
-        const program = await Program.findOne({ user_id: userId, is_active: true });
+        let program = await Program.findOne({ user_id: userId, is_active: true });
+        
+        // --- Auto-Migration / Lazy Migration Interceptor ---
+        if (program && (!program.schema_version || program.schema_version < CURRENT_PROGRAM_VERSION)) {
+            console.log(`Auto-migrating user ${userId} to schema_version ${CURRENT_PROGRAM_VERSION}...`);
+            
+            // Gather existing data for the AI to rebuild the program
+            const height = user.height || 175; // Default if old user didn't save height
+            const weight = tracking ? tracking.weight : 70;
+            
+            const migrationData = {
+                age: user.age || 30,
+                gender: user.gender || 'male',
+                height: height,
+                weight: weight,
+                diet: user.nutrition_preferences?.diet || 'רגילה',
+                'food-prefs': user.nutrition_preferences?.foodPrefs || '',
+                'workout-days': user.workout_days_per_week || 3,
+                'visual-goals': user.visual_goals || 'חיטוב וירידה באחוזי שומן'
+            };
+
+            try {
+                // We use generateProgramAI to give them a completely fresh V2 program based on their physical stats
+                const aiProgram = await generateProgramAI(migrationData);
+                
+                // Update the document in MongoDB
+                program.schema_version = aiProgram.schema_version || CURRENT_PROGRAM_VERSION;
+                program.target_calories = aiProgram.targetCalories;
+                program.protein_grams = aiProgram.proteinGrams;
+                program.carbs_grams = aiProgram.carbsGrams;
+                program.fats_grams = aiProgram.fatsGrams;
+                program.portion_budget = aiProgram.portionBudget;
+                program.portion_bank = aiProgram.portionBank;
+                program.portion_definitions = aiProgram.portion_definitions;
+                program.workout_plan = aiProgram.workoutPlan;
+                program.cardio_and_neat = aiProgram.cardioAndNeat;
+                
+                await program.save();
+                console.log(`User ${userId} successfully auto-migrated.`);
+            } catch (e) {
+                console.error(`Auto-migration failed for user ${userId}:`, e.message);
+                // We do not throw or crash. The frontend will just receive the old program and fallback gracefully (if any), 
+                // but ideally the next request will retry.
+            }
+        }
         
         const result = {
             id: user._id.toString(), // Map _id to id for frontend compatibility
