@@ -151,6 +151,7 @@ const programSchema = new mongoose.Schema({
     fats_grams: Number,
     portion_budget: mongoose.Schema.Types.Mixed,
     portion_bank: mongoose.Schema.Types.Mixed,
+    portion_definitions: mongoose.Schema.Types.Mixed,
     workout_plan: mongoose.Schema.Types.Mixed,  // Saves the JSON array natively
     cardio_and_neat: mongoose.Schema.Types.Mixed,
     workout_logs: [mongoose.Schema.Types.Mixed], // Progressive Overload tracking
@@ -209,8 +210,9 @@ async function generateProgramAI(data) {
     חוקי תזונה מוחלטים - מעבר ל'בנק מנות' (Exchange Lists):
     1. ביטול ארוחות קבועות: חל איסור מוחלט לייצר תפריט המכיל ארוחות ספציפיות מסודרות לפי זמנים (בוקר, צהריים, ערב).
     2. חישוב תקציב יומי (portionBudget): חשב את ה-BMR באמצעות נוסחת Mifflin-St Jeor והתאם את הקלוריות והמאקרו. חלק את סך הקלוריות והמאקרו במדויק לתקציב מנות (למשל 6 מנות פחמימה, 5 מנות חלבון, 3 מנות שומן), כך שכל בחירה מהבנק תתכנס בדיוק ליעדים התזונתיים.
-    3. סטנדרטיזציה והשוואת עריכים (portionBank): צור 3 קטגוריות מרכזיות (carbs, protein, fats). קבע סטנדרט קבוע לכל מנה (למשל: מנת פחמימה = ~15g פחמימה, מנת חלבון = ~20g חלבון).
-    4. חובה להשתמש אך ורק במידות משקל (גרמים) עבור כל פריט בבנק. כמות הגרמים של כל מזון בבנק תחושב דינמית כדי להתאים לסטנדרט המנה שנקבע – לדוגמה, כמות הגרמים של בטטה המהווה 'מנת פחמימה' תהיה זהה קלורית למנת אורז.
+    3. הגדרות מתמטיות למנות (portion_definitions): חובה לייצר אובייקט שמגדיר במדויק כמה קלוריות וגרמים (של אב המזון העיקרי) מהווים מנה אחת בכל קטגוריה (למשל: carbs: 80 קלוריות ו-15 גרם פחמימה).
+    4. סטנדרטיזציה וגמישות (portionBank): צור 3 קטגוריות מרכזיות (carbs, protein, fats). כמות הגרמים של כל מזון תחושב דינמית כדי להתאים לסטנדרט המנה שנקבע בהגדרות.
+    5. חוק פריטים משתנים/גמישים: עבור פריטים מורכבים כמו לחם, יוגורט או חטיפים, אל תגדיר 'לחם מלא - 40 גרם'. במקום זאת, ייצר כיתוב גמיש, לדוגמה: 'לחם מכל סוג (עד 80 קלוריות לפרוסה) - פרוסה אחת השווה למנה אחת'.
     
     חוקי אימון מוחלטים:
     1. כל אימון חייב להתחיל בסעיף של 'חימום מפרקי דינמי וספציפי'.
@@ -227,6 +229,11 @@ async function generateProgramAI(data) {
             "carbs": <מספר שלם בלבד, למשל: 5>,
             "protein": <מספר שלם בלבד, למשל: 6>,
             "fats": <מספר שלם בלבד, למשל: 3>
+        },
+        "portion_definitions": {
+            "carbs": { "calories": <מספר שלם>, "grams": <מספר שלם> },
+            "protein": { "calories": <מספר שלם>, "grams": <מספר שלם> },
+            "fats": { "calories": <מספר שלם>, "grams": <מספר שלם> }
         },
         "portionBank": {
             "carbs": [ { "name": "שם הפריט", "amount": "כמות בגרמים השווה למנת פחמימה אחת" } ],
@@ -279,6 +286,11 @@ async function generateCheckinAI(oldProgram, newTracking, feelings, workoutLogs 
             "carbs": <מספר שלם בלבד, למשל: 5>,
             "protein": <מספר שלם בלבד, למשל: 6>,
             "fats": <מספר שלם בלבד, למשל: 3>
+        },
+        "portion_definitions": {
+            "carbs": { "calories": <מספר שלם>, "grams": <מספר שלם> },
+            "protein": { "calories": <מספר שלם>, "grams": <מספר שלם> },
+            "fats": { "calories": <מספר שלם>, "grams": <מספר שלם> }
         },
         "portionBank": {
             "carbs": [ { "name": "שם הפריט", "amount": "כמות בגרמים השווה למנת פחמימה אחת" } ],
@@ -369,6 +381,7 @@ app.post('/api/onboarding', authenticateToken, cpUpload, async (req, res) => {
             fats_grams: aiProgram.fatsGrams,
             portion_budget: aiProgram.portionBudget,
             portion_bank: aiProgram.portionBank,
+            portion_definitions: aiProgram.portion_definitions,
             workout_plan: aiProgram.workoutPlan, // Saved natively as JSON due to Mixed type
             cardio_and_neat: aiProgram.cardioAndNeat
         });
@@ -441,6 +454,7 @@ app.post('/api/checkin', authenticateToken, cpUpload, async (req, res) => {
             fats_grams: aiCheckin.fatsGrams,
             portion_budget: aiCheckin.portionBudget,
             portion_bank: aiCheckin.portionBank,
+            portion_definitions: aiCheckin.portion_definitions,
             workout_plan: aiCheckin.workoutPlan,
             cardio_and_neat: aiCheckin.cardioAndNeat,
             ai_feedback: aiCheckin.ai_feedback
@@ -512,6 +526,7 @@ app.get('/api/user/me', authenticateToken, async (req, res) => {
             fats_grams: program ? program.fats_grams : null,
             portion_budget: program && program.portion_budget ? JSON.stringify(program.portion_budget) : null,
             portion_bank: program && program.portion_bank ? JSON.stringify(program.portion_bank) : null,
+            portion_definitions: program && program.portion_definitions ? JSON.stringify(program.portion_definitions) : null,
             workout_plan: program && program.workout_plan ? JSON.stringify(program.workout_plan) : null,
             cardio_and_neat: program && program.cardio_and_neat ? JSON.stringify(program.cardio_and_neat) : null,
             ai_feedback: program ? program.ai_feedback : null

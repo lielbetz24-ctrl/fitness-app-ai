@@ -175,10 +175,25 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                         // Render Exchange Lists
                         const bank = JSON.parse(data.portion_bank);
+                        const defs = data.portion_definitions ? JSON.parse(data.portion_definitions) : null;
+                        const hebrewNames = { carbs: 'פחמימה', protein: 'חלבון', fats: 'שומן' };
+
                         ['carbs', 'protein', 'fats'].forEach(type => {
                             const listEl = document.getElementById(`bank-${type}`);
                             if (listEl && bank[type] && Array.isArray(bank[type])) {
                                 listEl.innerHTML = '';
+                                
+                                // Insert tip if definition exists
+                                if (defs && defs[type]) {
+                                    let oldTip = listEl.parentNode.querySelector('.exchange-tip');
+                                    if (oldTip) oldTip.remove();
+                                    
+                                    const tip = document.createElement('div');
+                                    tip.className = 'exchange-tip';
+                                    tip.innerHTML = `💡 <strong>רוצים מאכל שלא ברשימה?</strong><br>מנת ${hebrewNames[type]} אחת שווה לכ-${defs[type].calories} קלוריות ול-${defs[type].grams} גרם ${hebrewNames[type]}. כל מאכל שתואם לערכים אלו יכול להחליף מנה אחת מהרשימה.`;
+                                    listEl.parentNode.insertBefore(tip, listEl);
+                                }
+
                                 bank[type].forEach(item => {
                                     const li = document.createElement('li');
                                     li.innerHTML = `<strong>${item.name}</strong> - ${item.amount}`;
