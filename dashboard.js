@@ -282,7 +282,17 @@ document.addEventListener('DOMContentLoaded', async () => {
                             exList.className = 'workout-list';
                             dayPlan.exercises.forEach(ex => {
                                 const li = document.createElement('li');
-                                li.innerHTML = `<strong>${ex.name}:</strong> ${ex.details}`;
+                                li.innerHTML = `
+                                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                                        <div class="ex-details-text"><strong>${ex.name}:</strong> ${ex.details}</div>
+                                        <button class="swap-btn" title="החלף תרגיל" style="background: none; border: none; cursor: pointer; font-size: 1.2rem; padding: 0 5px; margin-right: 10px; opacity: 0.7; transition: opacity 0.2s;">🔄</button>
+                                    </div>
+                                `;
+                                
+                                const swapBtn = li.querySelector('.swap-btn');
+                                swapBtn.addEventListener('click', () => {
+                                    handleSwapClick(swapBtn, ex.name, dayPlan.day, dayPlan.title, li);
+                                });
                                 
                                 // Parse sets count from ex.details
                                 let setsCount = 3; // Default
@@ -605,5 +615,122 @@ document.addEventListener('DOMContentLoaded', async () => {
                 btnExportWorkout.innerHTML = originalText;
             });
         });
+    }
+
+    // Swap Modal Elements
+    const swapModal = document.getElementById('swap-modal');
+    const swapContainer = document.getElementById('swap-alternatives-container');
+    const btnCancelSwap = document.getElementById('btn-cancel-swap');
+    if (btnCancelSwap) {
+        btnCancelSwap.addEventListener('click', () => {
+            swapModal.style.display = 'none';
+        });
+    }
+
+    async function handleSwapClick(btnEl, exerciseName, dayTitle, targetMuscle, liEl) {
+        const originalHtml = btnEl.innerHTML;
+        btnEl.innerHTML = '<span class="spinner" style="display:inline-block; width:16px; height:16px; border:2px solid var(--accent); border-top-color:transparent; border-radius:50%; animation:spin 1s linear infinite;"></span>';
+        btnEl.disabled = true;
+
+        try {
+            const res = await fetch('/api/generate-alternatives', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ exerciseName, targetMuscle })
+            });
+
+            if (!res.ok) throw new Error('Failed to generate alternatives');
+            const alternatives = await res.json();
+
+            // Render modal
+            swapContainer.innerHTML = '';
+            alternatives.forEach(alt => {
+                const altDiv = document.createElement('div');
+                altDiv.style.backgroundColor = 'var(--bg-color)';
+                altDiv.style.padding = '15px';
+                altDiv.style.marginBottom = '10px';
+                altDiv.style.borderRadius = 'var(--radius)';
+                altDiv.style.border = '1px solid var(--border-color)';
+                
+                altDiv.innerHTML = `
+                    <h4 style="margin: 0 0 5px 0; color: var(--accent);">${alt.name}</h4>
+                    <p style="margin: 0 0 10px 0; font-size: 0.9rem; color: var(--text-secondary);">${alt.description}</p>
+                    <button class="btn btn-primary btn-sm select-alt-btn" style="width: 100%; padding: 8px;">בחר תרגיל זה</button>
+                `;
+
+                altDiv.querySelector('.select-alt-btn').addEventListener('click', async () => {
+                    await selectAlternative(alt, exerciseName, dayTitle, liEl);
+                });
+
+                swapContainer.appendChild(altDiv);
+            });
+
+            swapModal.style.display = 'flex';
+
+        } catch (e) {
+            console.error(e);
+            alert('שגיאה בטעינת החלופות. נסה שוב.');
+        } finally {
+            btnEl.innerHTML = originalHtml;
+            btnEl.disabled = false;
+        }
+    }
+
+    async function selectAlternative(alt, oldExerciseName, dayTitle, liEl) {
+        swapModal.style.display = 'none';
+        
+        const swapBtn = liEl.querySelector('.swap-btn');
+        if (swapBtn) {
+            swapBtn.innerHTML = '<span class="spinner" style="display:inline-block; width:16px; height:16px; border:2px solid var(--accent); border-top-color:transparent; border-radius:50%; animation:spin 1s linear infinite;"></span>';
+            swapBtn.disabled = true;
+        }
+
+        try {
+            const res = await fetch('/api/save-exercise-swap', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    dayTitle,
+                    oldExerciseName,
+                    newExerciseName: alt.name,
+                    newExerciseDetails: alt.description 
+                })
+            });
+
+            if (!res.ok) throw new Error('Failed to save swap');
+            
+            const detailsText = liEl.querySelector('.ex-details-text');
+            if (detailsText) {
+                detailsText.innerHTML = `<strong>${alt.name}:</strong> ${alt.description}`;
+            }
+            if (swapBtn) {
+                swapBtn.innerHTML = '🔄';
+                swapBtn.disabled = false;
+                
+                // Keep the button functional for another swap if needed
+                swapBtn.dataset.exname = alt.name;
+                
+                // Remove old event listener by replacing the node (cleanest way in vanilla JS)
+                const newSwapBtn = swapBtn.cloneNode(true);
+                swapBtn.parentNode.replaceChild(newSwapBtn, swapBtn);
+                newSwapBtn.addEventListener('click', () => {
+                    handleSwapClick(newSwapBtn, alt.name, dayTitle, dayTitle, liEl);
+                });
+            }
+
+        } catch (e) {
+            console.error(e);
+            alert('שגיאה בשמירת התרגיל. נסה שוב.');
+            if (swapBtn) {
+                swapBtn.innerHTML = '🔄';
+                swapBtn.disabled = false;
+            }
+        }
     }
 });
