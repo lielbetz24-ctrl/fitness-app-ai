@@ -683,10 +683,20 @@ app.post('/api/generate-alternatives', authenticateToken, async (req, res) => {
         // איתחול בטוח
         const { GoogleGenerativeAI } = require('@google/generative-ai');
         const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-        const result = await model.generateContent([systemPrompt, userPrompt]);
-        const response = await result.response;
-        const text = response.text();
+        
+        let text = "";
+        try {
+            const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+            const result = await model.generateContent([systemPrompt, userPrompt]);
+            const response = await result.response;
+            text = response.text();
+        } catch (primaryError) {
+            console.error('Primary model failed, Falling back to secondary model...', primaryError.message);
+            const fallbackModel = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
+            const result = await fallbackModel.generateContent([systemPrompt, userPrompt]);
+            const response = await result.response;
+            text = response.text();
+        }
 
         // ניקוי התשובה מ-Gemini
         let cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
