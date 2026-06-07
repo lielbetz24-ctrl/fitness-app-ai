@@ -14,6 +14,49 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentStep = 0;
     const totalSteps = steps.length;
 
+    const genderRadios = document.querySelectorAll('input[name="gender"]');
+    const measurementsContainer = document.getElementById('measurements-container');
+
+    const renderMeasurements = () => {
+        const gender = document.querySelector('input[name="gender"]:checked').value;
+        if (gender === 'male') {
+            measurementsContainer.innerHTML = `
+                <div class="input-group">
+                    <label for="chest">חזה</label>
+                    <input type="number" id="chest" name="m_chest" step="0.1" required>
+                </div>
+                <div class="input-group">
+                    <label for="arms">ידיים</label>
+                    <input type="number" id="arms" name="m_arms" step="0.1" required>
+                </div>
+                <div class="input-group">
+                    <label for="waist">מותניים</label>
+                    <input type="number" id="waist" name="m_waist" step="0.1" required>
+                </div>
+            `;
+        } else {
+            measurementsContainer.innerHTML = `
+                <div class="input-group">
+                    <label for="waist">מותניים</label>
+                    <input type="number" id="waist" name="m_waist" step="0.1" required>
+                </div>
+                <div class="input-group">
+                    <label for="hips">אגן/ישבן</label>
+                    <input type="number" id="hips" name="m_hips" step="0.1" required>
+                </div>
+                <div class="input-group">
+                    <label for="thighs">ירכיים</label>
+                    <input type="number" id="thighs" name="m_thighs" step="0.1" required>
+                </div>
+            `;
+        }
+    };
+
+    genderRadios.forEach(radio => radio.addEventListener('change', renderMeasurements));
+    if (measurementsContainer) {
+        renderMeasurements();
+    }
+
     function updateWizard() {
         steps.forEach((step, index) => {
             step.classList.toggle('active', index === currentStep);
@@ -71,6 +114,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 try {
                     const form = document.getElementById('onboarding-form');
                     const formData = new FormData(form);
+
+                    const gender = formData.get('gender');
+                    const measurements = {};
+                    if (gender === 'male') {
+                        measurements.chest = formData.get('m_chest');
+                        measurements.arms = formData.get('m_arms');
+                        measurements.waist = formData.get('m_waist');
+                    } else {
+                        measurements.waist = formData.get('m_waist');
+                        measurements.hips = formData.get('m_hips');
+                        measurements.thighs = formData.get('m_thighs');
+                    }
+                    formData.append('measurements', JSON.stringify(measurements));
 
                     // Send data to the Express backend
                     const response = await fetch('/api/onboarding', {

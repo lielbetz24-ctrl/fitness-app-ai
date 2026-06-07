@@ -33,8 +33,46 @@ document.addEventListener('DOMContentLoaded', async () => {
                 
                 // Profile
                 document.getElementById('val-weight').textContent = `${data.weight || '--'} ק"ג`;
-                document.getElementById('val-waist').textContent = `${data.waist_circumference || '--'} ס"מ`;
                 document.getElementById('val-days').textContent = data.workout_days_per_week || '--';
+                
+                // Dynamic Measurements in Profile
+                const metricsGrid = document.getElementById('user-metrics');
+                const measurementLabels = {
+                    chest: 'חזה',
+                    arms: 'ידיים',
+                    waist: 'מותניים',
+                    hips: 'אגן/ישבן',
+                    thighs: 'ירכיים'
+                };
+                if (data.measurements) {
+                    for (const [key, val] of Object.entries(data.measurements)) {
+                        if (val) {
+                            const label = measurementLabels[key] || key;
+                            const metricDiv = document.createElement('div');
+                            metricDiv.className = 'metric';
+                            metricDiv.innerHTML = `<span class="label">היקף ${label}:</span> <strong>${val} ס"מ</strong>`;
+                            metricsGrid.appendChild(metricDiv);
+                        }
+                    }
+                }
+
+                // Render dynamic Checkin modal fields based on gender
+                const cMeasurementsContainer = document.getElementById('c-measurements-container');
+                if (cMeasurementsContainer) {
+                    if (data.gender === 'male') {
+                        cMeasurementsContainer.innerHTML = `
+                            <div class="input-group"><label>חזה</label><input type="number" name="c_chest" step="0.1" required></div>
+                            <div class="input-group"><label>ידיים</label><input type="number" name="c_arms" step="0.1" required></div>
+                            <div class="input-group"><label>מותניים</label><input type="number" name="c_waist" step="0.1" required></div>
+                        `;
+                    } else {
+                        cMeasurementsContainer.innerHTML = `
+                            <div class="input-group"><label>מותניים</label><input type="number" name="c_waist" step="0.1" required></div>
+                            <div class="input-group"><label>אגן/ישבן</label><input type="number" name="c_hips" step="0.1" required></div>
+                            <div class="input-group"><label>ירכיים</label><input type="number" name="c_thighs" step="0.1" required></div>
+                        `;
+                    }
+                }
                 document.getElementById('val-goal').textContent = data.visual_goals || 'לא הוגדרה מטרה ספציפית.';
                 
                 // Timer
@@ -439,6 +477,19 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         try {
             const formData = new FormData(checkinForm);
+            
+            const measurements = {};
+            if (formData.has('c_chest')) {
+                measurements.chest = formData.get('c_chest');
+                measurements.arms = formData.get('c_arms');
+                measurements.waist = formData.get('c_waist');
+            } else if (formData.has('c_hips')) {
+                measurements.waist = formData.get('c_waist');
+                measurements.hips = formData.get('c_hips');
+                measurements.thighs = formData.get('c_thighs');
+            }
+            formData.append('measurements', JSON.stringify(measurements));
+
             const response = await fetch('/api/checkin', {
                 method: 'POST',
                 headers: {

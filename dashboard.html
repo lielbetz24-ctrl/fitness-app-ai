@@ -37,7 +37,6 @@
                         <h3>סיכום נתונים אישיים</h3>
                         <div class="metrics-grid" id="user-metrics">
                             <div class="metric"><span class="label">משקל נוכחי:</span> <strong id="val-weight">-- ק"ג</strong></div>
-                            <div class="metric"><span class="label">היקף מותניים:</span> <strong id="val-waist">-- ס"מ</strong></div>
                             <div class="metric"><span class="label">ימי אימון בשבוע:</span> <strong id="val-days">--</strong></div>
                         </div>
                         <div class="aesthetic-goal">
@@ -226,11 +225,8 @@
                 </div>
 
                 <h3>היקפים מעודכנים (ס"מ)</h3>
-                <div class="measurements-grid">
-                    <div class="input-group"><label>מותניים</label><input type="number" name="waist" step="0.1" required></div>
-                    <div class="input-group"><label>כתפיים</label><input type="number" name="shoulders" step="0.1" required></div>
-                    <div class="input-group"><label>ידיים</label><input type="number" name="arms" step="0.1" required></div>
-                    <div class="input-group"><label>ירכיים</label><input type="number" name="thighs" step="0.1" required></div>
+                <div class="measurements-grid" id="c-measurements-container">
+                    <!-- Dynamic fields will be injected here via dashboard.js -->
                 </div>
 
                 <h3>תחושות במהלך השבועיים האחרונים</h3>
