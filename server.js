@@ -673,12 +673,12 @@ app.get('/api/user/me', authenticateToken, async (req, res) => {
 app.post('/api/generate-alternatives', authenticateToken, async (req, res) => {
     try {
         const { exerciseName, targetMuscle } = req.body;
-        if (!exerciseName || !targetMuscle) {
-            return res.status(400).json({ error: 'חסרים נתוני תרגיל או שריר מטרה.' });
+        if (!exerciseName) {
+            return res.status(400).json({ error: 'חסרים נתוני תרגיל.' });
         }
 
-        const systemPrompt = `אתה מאמן כושר עלית. עליך להחזיר אך ורק מערך JSON בפורמט: [{"name": "...", "description": "...", "targetMuscle": "..."}]`;
-        const userPrompt = `המשתמש רוצה להחליף את התרגיל "${exerciseName}" שעובד על ${targetMuscle}. ספק 3 תרגילים חלופיים שעובדים על אותו שריר מטרה, בעצימות וביומכניקה דומות (למשל, לחיצה תמורת לחיצה). החזר אך ורק מערך JSON בפורמט: [{"name": "...", "description": "...", "targetMuscle": "..."}]`;
+        const systemPrompt = `אתה מאמן כושר עלית. עליך להחזיר אך ורק מערך JSON בפורמט: [{"name": "...", "description": "..."}]`;
+        const userPrompt = `המשתמש נמצא באימון מסוג: ${targetMuscle || 'כללי'}. הוא מעוניין להחליף את התרגיל ${exerciseName}. ספק 3 תרגילים חלופיים מאותה משפחת תנועה ובעצימות זהה, שיתאימו לאימון זה. החזר אך ורק מערך JSON חוקי במבנה: [{"name": "...", "description": "..."}]. ללא מילות הקדמה.`;
 
         const responseText = await callGemini(systemPrompt, userPrompt);
         const cleanedText = responseText.replace(/```json/gi, '').replace(/```/g, '').trim();
@@ -686,7 +686,7 @@ app.post('/api/generate-alternatives', authenticateToken, async (req, res) => {
         res.json(alternatives);
     } catch (e) {
         console.error("Generate alternatives error:", e);
-        res.status(500).json({ error: e.message || 'שגיאה ביצירת תחליפים.' });
+        res.status(500).json({ error: e.message, stack: e.stack });
     }
 });
 
