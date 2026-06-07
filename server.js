@@ -137,6 +137,7 @@ const biweeklyTrackingSchema = new mongoose.Schema({
     tracking_date: { type: Date, default: Date.now },
     weight: Number,
     measurements: mongoose.Schema.Types.Mixed,
+    calculatedBodyFat: Number,
     personal_feelings: String,
     image_front_url: String,
     image_back_url: String,
@@ -163,6 +164,41 @@ const programSchema = new mongoose.Schema({
     created_at: { type: Date, default: Date.now }
 });
 const Program = mongoose.model('Program', programSchema);
+
+function calculateBodyFat(gender, height, measurements) {
+    if (!height || !measurements || !measurements.neck || !measurements.waist) return null;
+    
+    let bf = null;
+    try {
+        const neck = parseFloat(measurements.neck);
+        const waist = parseFloat(measurements.waist);
+        const h = parseFloat(height);
+        
+        if (gender === 'male') {
+            const diff = waist - neck;
+            if (diff > 0 && h > 0) {
+                bf = 86.010 * Math.log10(diff) - 70.041 * Math.log10(h) + 36.76;
+            }
+        } else {
+            if (!measurements.hips) return null;
+            const hips = parseFloat(measurements.hips);
+            const sum = waist + hips - neck;
+            if (sum > 0 && h > 0) {
+                bf = 163.205 * Math.log10(sum) - 97.684 * Math.log10(h) - 78.387;
+            }
+        }
+    } catch (e) {
+        console.error("Error calculating BF", e);
+        return null;
+    }
+    
+    if (bf !== null) {
+        if (bf < 3) bf = 3; // Essential fat minimum
+        if (bf > 60) bf = 60; // Reasonable upper bound
+        return parseFloat(bf.toFixed(2));
+    }
+    return null;
+}
 
 // AI Functions using @google/genai
 async function callGemini(systemInstruction, userPrompt) {
@@ -204,7 +240,7 @@ async function callGemini(systemInstruction, userPrompt) {
     }
 }
 
-async function generateProgramAI(data) {
+async function generateProgramAI(data, calculatedBodyFat) {
     const systemPrompt = `
     אתה תזונאי קליני ומאמן כושר מקצועי ברמת עלית.
     תפקידך לייצר תוכנית תזונה ואימונים מותאמת אישית, מפורטת ומדויקת בעברית.
@@ -226,7 +262,7 @@ async function generateProgramAI(data) {
     3. חובה לשלב הנחיות ליישום Progressive Overload.
     
     התאמה מגדרית (Gender Specificity):
-    1. בתזונה (BMR & TDEE): חובה להשתמש במשוואת Mifflin-St Jeor המדויקת המבדילה בין גברים לנשים (לגברים התוצאה מקבלת תוספת של +5, ולנשים מופחת -161).
+    1. בתזונה (BMR & TDEE): חובה להשתמש במשוואת קאץ'-מקרדל (Katch-McArdle) המבוססת על מסת גוף רזה, שהיא המדויקת ביותר. (Lean Mass = Weight * (1 - BF/100)).
     2. בתוכנית האימונים - גברים: אלא אם המשתמש הגדיר מטרה הפוכה במפורש, תן דגש בולט יותר לנפח אימון בפלג הגוף העליון (חזה, גב, כתפיים וידיים), שלב תרגילים מורכבים כבדים לפלג עליון, והתאם זמני מנוחה מספיקים לעצימות.
     3. בתוכנית האימונים - נשים: אלא אם המשתמשת הגדירה מטרה הפוכה במפורש, תן דגש בולט יותר לפלג הגוף התחתון (ישבן, ירכיים קדמיות ואחוריות) ולשרירי הליבה. יישם נפח אימון מעט גבוה יותר לשרירי הישבן, ונצל את יכולת ההתאוששות המהירה יותר של נשים (מנוחות קצרות יותר, או עבודה בטווחי חזרות מעט גבוהים יותר בתרגילי בידוד).
     4. רצפת בטיחות קלורית (Caloric Floor): חל איסור מוחלט לייצר תפריט מתחת ל-1,200 קלוריות לנשים (או מתחת ל-BMR שלהן, הגבוה מביניהם) כדי למנוע פגיעה הורמונלית (RED-S). אצל גברים הרצפה המוחלטת היא 1,500 קלוריות.
@@ -273,6 +309,7 @@ async function generateProgramAI(data) {
     מגדר: ${data.gender === 'male' ? 'זכר' : 'נקבה'}
     גובה: ${data.height} ס"מ
     משקל: ${data.weight} ק"ג
+    המשתמש בעל אחוז שומן מדויק של ${calculatedBodyFat !== null ? calculatedBodyFat + '%' : 'לא ידוע'}. עליך לגזור את פוטנציאל בניית מסת השריר, רגישות לאינסולין, וקצב הכתבת עומס האימונים בהתאם לנתון פיזיולוגי מוגמר זה.
     העדפה תזונתית: ${data.diet}
     מאכלים/העדפות (אם צוינו): ${data['food-prefs']}
     ימי אימון בשבוע: ${data['workout-days']}
@@ -284,7 +321,7 @@ async function generateProgramAI(data) {
     return await callGemini(systemPrompt, userPrompt);
 }
 
-async function generateCheckinAI(oldProgram, newTracking, feelings, workoutLogs = [], gender = 'male') {
+async function generateCheckinAI(oldProgram, newTracking, feelings, workoutLogs = [], gender = 'male', calculatedBodyFat = null) {
     const systemPrompt = `
     אתה תזונאי קליני ומאמן כושר מקצועי שעוקב אחר מתאמן.
     קבל את נתוני העבר, המשקל החדש ותחושות המתאמן בשבועיים האחרונים.
@@ -300,7 +337,7 @@ async function generateCheckinAI(oldProgram, newTracking, feelings, workoutLogs 
     3. חישוב בנק התחליפים (Portion Bank Grams): כמות הגרמים של כל מאכל צריכה לכלול את המאקרו המשולב (שומן נטו בתוך טחינה, פחמימה נטו בתוך אורז וכו').
 
     התאמה מגדרית (Gender Specificity):
-    1. בתזונה (BMR & TDEE): חובה להשתמש במשוואת Mifflin-St Jeor המדויקת המבדילה בין גברים לנשים (לגברים התוצאה מקבלת תוספת של +5, ולנשים מופחת -161).
+    1. בתזונה (BMR & TDEE): חובה להשתמש במשוואת קאץ'-מקרדל (Katch-McArdle) המבוססת על מסת גוף רזה, שהיא המדויקת ביותר. (Lean Mass = Weight * (1 - BF/100)).
     2. בתוכנית האימונים - גברים: אלא אם המשתמש הגדיר מטרה הפוכה במפורש, תן דגש בולט יותר לנפח אימון בפלג הגוף העליון (חזה, גב, כתפיים וידיים), שלב תרגילים מורכבים כבדים לפלג עליון, והתאם זמני מנוחה מספיקים לעצימות.
     3. בתוכנית האימונים - נשים: אלא אם המשתמשת הגדירה מטרה הפוכה במפורש, תן דגש בולט יותר לפלג הגוף התחתון (ישבן, ירכיים קדמיות ואחוריות) ולשרירי הליבה. יישם נפח אימון מעט גבוה יותר לשרירי הישבן, ונצל את יכולת ההתאוששות המהירה יותר של נשים (מנוחות קצרות יותר, או עבודה בטווחי חזרות מעט גבוהים יותר בתרגילי בידוד).
     4. רצפת בטיחות קלורית (Caloric Floor): חל איסור מוחלט לייצר תפריט מתחת ל-1,200 קלוריות לנשים (או מתחת ל-BMR שלהן, הגבוה מביניהם) כדי למנוע פגיעה הורמונלית (RED-S). אצל גברים הרצפה המוחלטת היא 1,500 קלוריות.
@@ -340,7 +377,8 @@ async function generateCheckinAI(oldProgram, newTracking, feelings, workoutLogs 
 
     const userPrompt = `
     שים לב! מגדר המתאמן/ת: ${gender === 'male' ? 'זכר' : 'נקבה'}
-    הקפד להחיל את החוקים המגדריים של BMR (משוואת Mifflin) והדגשים בתוכנית האימונים בהתאם למגדר.
+    המשתמש בעל אחוז שומן מדויק של ${calculatedBodyFat !== null ? calculatedBodyFat + '%' : 'לא ידוע'}. עליך לגזור את פוטנציאל בניית מסת השריר, רגישות לאינסולין, וקצב הכתבת עומס האימונים בהתאם לנתון פיזיולוגי מוגמר זה.
+    הקפד להחיל את החוקים המגדריים של BMR (משוואת Katch-McArdle) והדגשים בתוכנית האימונים בהתאם למגדר ולשומן.
 
     נתוני תוכנית קודמת:
     קלוריות: ${oldProgram.target_calories}
@@ -372,10 +410,13 @@ app.post('/api/onboarding', authenticateToken, cpUpload, async (req, res) => {
             return res.status(400).json({ error: 'חסרים נתונים חובה.' });
         }
 
+        const measurementsObj = data.measurements ? JSON.parse(data.measurements) : {};
+        const calculatedBodyFat = calculateBodyFat(data.gender, data.height, measurementsObj);
+
         // Call AI FIRST before touching DB, allowing graceful rejection
         let aiProgram;
         try {
-            aiProgram = await generateProgramAI(data);
+            aiProgram = await generateProgramAI(data, calculatedBodyFat);
         } catch (e) {
             return res.status(500).json({ error: e.message });
         }
@@ -400,7 +441,8 @@ app.post('/api/onboarding', authenticateToken, cpUpload, async (req, res) => {
         const newTracking = new BiweeklyTracking({
             user_id: user._id,
             weight: parseFloat(data.weight),
-            measurements: data.measurements ? JSON.parse(data.measurements) : {},
+            measurements: measurementsObj,
+            calculatedBodyFat: calculatedBodyFat,
             image_front_url: imageFrontUrl,
             image_back_url: imageBackUrl,
             image_side_url: imageSideUrl
@@ -447,6 +489,10 @@ app.post('/api/checkin', authenticateToken, cpUpload, async (req, res) => {
 
         const user = await User.findById(userId);
         const gender = user ? user.gender : 'male';
+        const height = user ? user.height : null;
+
+        const measurementsObj = data.measurements ? JSON.parse(data.measurements) : {};
+        const calculatedBodyFat = calculateBodyFat(gender, height, measurementsObj);
 
         // Call AI BEFORE touching DB
         let aiCheckin;
@@ -456,7 +502,8 @@ app.post('/api/checkin', authenticateToken, cpUpload, async (req, res) => {
                 { weight: parseFloat(data.weight) }, 
                 data.feelings, 
                 oldProgram.workout_logs || [],
-                gender
+                gender,
+                calculatedBodyFat
             );
         } catch (e) {
             return res.status(500).json({ error: e.message });
@@ -469,7 +516,8 @@ app.post('/api/checkin', authenticateToken, cpUpload, async (req, res) => {
         const newTracking = new BiweeklyTracking({
             user_id: userId,
             weight: parseFloat(data.weight),
-            measurements: data.measurements ? JSON.parse(data.measurements) : {},
+            measurements: measurementsObj,
+            calculatedBodyFat: calculatedBodyFat,
             personal_feelings: data.feelings || '',
             image_front_url: imageFrontUrl,
             image_back_url: imageBackUrl,
