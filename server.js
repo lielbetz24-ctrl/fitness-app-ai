@@ -677,12 +677,13 @@ app.post('/api/generate-alternatives', authenticateToken, async (req, res) => {
             return res.status(400).json({ error: 'חסרים נתוני תרגיל.' });
         }
 
-        const systemPrompt = `אתה מאמן כושר עלית. עליך להחזיר אך ורק מערך JSON בפורמט: [{"name": "...", "description": "..."}]`;
-        const userPrompt = `המשתמש נמצא באימון מסוג: ${targetMuscle || 'כללי'}. הוא מעוניין להחליף את התרגיל ${exerciseName}. ספק 3 תרגילים חלופיים מאותה משפחת תנועה ובעצימות זהה, שיתאימו לאימון זה. החזר אך ורק מערך JSON חוקי במבנה: [{"name": "...", "description": "..."}]. ללא מילות הקדמה.`;
+        const systemPrompt = `אתה מאמן. עליך להחזיר רק מערך JSON בפורמט: [{"name": "...", "description": "..."}]`;
+        const userPrompt = `המשתמש מתאמן כעת ב: ${targetMuscle || 'כללי'}. הצע 3 תחליפים דומים לתרגיל "${exerciseName}". החזר אך ורק מערך JSON: [{"name": "...", "description": "..."}]. ללא טקסט נוסף.`;
 
         // איתחול בטוח
         const { GoogleGenerativeAI } = require('@google/generative-ai');
         const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+        const delay = ms => new Promise(res => setTimeout(res, ms));
         
         let text = "";
         try {
@@ -691,8 +692,9 @@ app.post('/api/generate-alternatives', authenticateToken, async (req, res) => {
             const response = await result.response;
             text = response.text();
         } catch (primaryError) {
-            console.error('Primary model failed, Falling back to secondary model...', primaryError.message);
-            const fallbackModel = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
+            console.error('Primary model failed, delaying 3s before retry...', primaryError.message);
+            await delay(3000);
+            const fallbackModel = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
             const result = await fallbackModel.generateContent([systemPrompt, userPrompt]);
             const response = await result.response;
             text = response.text();
