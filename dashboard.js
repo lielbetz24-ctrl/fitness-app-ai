@@ -38,6 +38,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 // Dynamic Measurements in Profile
                 const metricsGrid = document.getElementById('user-metrics');
                 const measurementLabels = {
+                    neck: 'צוואר',
                     chest: 'חזה',
                     arms: 'ידיים',
                     waist: 'מותניים',
@@ -61,12 +62,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (cMeasurementsContainer) {
                     if (data.gender === 'male') {
                         cMeasurementsContainer.innerHTML = `
+                            <div class="input-group"><label>צוואר</label><input type="number" name="c_neck" step="0.1" required></div>
                             <div class="input-group"><label>חזה</label><input type="number" name="c_chest" step="0.1" required></div>
                             <div class="input-group"><label>ידיים</label><input type="number" name="c_arms" step="0.1" required></div>
                             <div class="input-group"><label>מותניים</label><input type="number" name="c_waist" step="0.1" required></div>
                         `;
                     } else {
                         cMeasurementsContainer.innerHTML = `
+                            <div class="input-group"><label>צוואר</label><input type="number" name="c_neck" step="0.1" required></div>
                             <div class="input-group"><label>מותניים</label><input type="number" name="c_waist" step="0.1" required></div>
                             <div class="input-group"><label>אגן/ישבן</label><input type="number" name="c_hips" step="0.1" required></div>
                             <div class="input-group"><label>ירכיים</label><input type="number" name="c_thighs" step="0.1" required></div>
@@ -480,10 +483,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             
             const measurements = {};
             if (formData.has('c_chest')) {
+                measurements.neck = formData.get('c_neck');
                 measurements.chest = formData.get('c_chest');
                 measurements.arms = formData.get('c_arms');
                 measurements.waist = formData.get('c_waist');
             } else if (formData.has('c_hips')) {
+                measurements.neck = formData.get('c_neck');
                 measurements.waist = formData.get('c_waist');
                 measurements.hips = formData.get('c_hips');
                 measurements.thighs = formData.get('c_thighs');

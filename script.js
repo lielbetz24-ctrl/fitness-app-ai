@@ -22,6 +22,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (gender === 'male') {
             measurementsContainer.innerHTML = `
                 <div class="input-group">
+                    <label for="neck">צוואר</label>
+                    <input type="number" id="neck" name="m_neck" step="0.1" required>
+                </div>
+                <div class="input-group">
                     <label for="chest">חזה</label>
                     <input type="number" id="chest" name="m_chest" step="0.1" required>
                 </div>
@@ -36,6 +40,10 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
         } else {
             measurementsContainer.innerHTML = `
+                <div class="input-group">
+                    <label for="neck">צוואר</label>
+                    <input type="number" id="neck" name="m_neck" step="0.1" required>
+                </div>
                 <div class="input-group">
                     <label for="waist">מותניים</label>
                     <input type="number" id="waist" name="m_waist" step="0.1" required>
@@ -118,10 +126,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     const gender = formData.get('gender');
                     const measurements = {};
                     if (gender === 'male') {
+                        measurements.neck = formData.get('m_neck');
                         measurements.chest = formData.get('m_chest');
                         measurements.arms = formData.get('m_arms');
                         measurements.waist = formData.get('m_waist');
                     } else {
+                        measurements.neck = formData.get('m_neck');
                         measurements.waist = formData.get('m_waist');
                         measurements.hips = formData.get('m_hips');
                         measurements.thighs = formData.get('m_thighs');
