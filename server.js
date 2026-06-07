@@ -680,13 +680,28 @@ app.post('/api/generate-alternatives', authenticateToken, async (req, res) => {
         const systemPrompt = `אתה מאמן כושר עלית. עליך להחזיר אך ורק מערך JSON בפורמט: [{"name": "...", "description": "..."}]`;
         const userPrompt = `המשתמש נמצא באימון מסוג: ${targetMuscle || 'כללי'}. הוא מעוניין להחליף את התרגיל ${exerciseName}. ספק 3 תרגילים חלופיים מאותה משפחת תנועה ובעצימות זהה, שיתאימו לאימון זה. החזר אך ורק מערך JSON חוקי במבנה: [{"name": "...", "description": "..."}]. ללא מילות הקדמה.`;
 
-        const responseText = await callGemini(systemPrompt, userPrompt);
-        const cleanedText = responseText.replace(/```json/gi, '').replace(/```/g, '').trim();
-        const alternatives = JSON.parse(cleanedText);
+        // איתחול בטוח
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        const result = await model.generateContent([systemPrompt, userPrompt]);
+        const response = await result.response;
+        const text = response.text();
+
+        // ניקוי התשובה מ-Gemini
+        let cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
+
+        // הגנה מפענוח
+        let alternatives;
+        try {
+            alternatives = JSON.parse(cleanText);
+        } catch (parseError) {
+            console.error('JSON Parse Error. Raw text from Gemini:', text);
+            throw new Error('התקבלה תשובה לא חוקית מהבינה המלאכותית: ' + text);
+        }
+
         res.json(alternatives);
-    } catch (e) {
-        console.error("Generate alternatives error:", e);
-        res.status(500).json({ error: e.message, stack: e.stack });
+    } catch (error) {
+        console.error('Backend Swap Error:', error);
+        res.status(500).json({ error: error.toString() });
     }
 });
 
