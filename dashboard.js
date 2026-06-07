@@ -628,6 +628,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     async function handleSwapClick(btnEl, exerciseName, dayTitle, targetMuscle, liEl) {
+        console.log('Swap Clicked:', { exerciseName, targetMuscle });
         const originalHtml = btnEl.innerHTML;
         btnEl.innerHTML = '<span class="spinner" style="display:inline-block; width:16px; height:16px; border:2px solid var(--accent); border-top-color:transparent; border-radius:50%; animation:spin 1s linear infinite;"></span>';
         btnEl.disabled = true;
@@ -642,7 +643,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 body: JSON.stringify({ exerciseName, targetMuscle })
             });
 
-            if (!res.ok) throw new Error('Failed to generate alternatives');
+            if (!res.ok) {
+                const errData = await res.json().catch(() => ({}));
+                throw new Error(errData.error || `Failed to generate alternatives (Status ${res.status})`);
+            }
             const alternatives = await res.json();
 
             // Render modal
@@ -671,8 +675,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             swapModal.style.display = 'flex';
 
         } catch (e) {
-            console.error(e);
-            alert('שגיאה בטעינת החלופות. נסה שוב.');
+            console.error('Error in handleSwapClick:', e);
+            alert(`שגיאה בטעינת החלופות:\n${e.message}`);
         } finally {
             btnEl.innerHTML = originalHtml;
             btnEl.disabled = false;

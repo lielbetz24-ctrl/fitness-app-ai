@@ -681,11 +681,12 @@ app.post('/api/generate-alternatives', authenticateToken, async (req, res) => {
         const userPrompt = `המשתמש רוצה להחליף את התרגיל "${exerciseName}" שעובד על ${targetMuscle}. ספק 3 תרגילים חלופיים שעובדים על אותו שריר מטרה, בעצימות וביומכניקה דומות (למשל, לחיצה תמורת לחיצה). החזר אך ורק מערך JSON בפורמט: [{"name": "...", "description": "...", "targetMuscle": "..."}]`;
 
         const responseText = await callGemini(systemPrompt, userPrompt);
-        const alternatives = JSON.parse(responseText);
+        const cleanedText = responseText.replace(/```json/gi, '').replace(/```/g, '').trim();
+        const alternatives = JSON.parse(cleanedText);
         res.json(alternatives);
     } catch (e) {
         console.error("Generate alternatives error:", e);
-        res.status(500).json({ error: 'שגיאה ביצירת תחליפים.' });
+        res.status(500).json({ error: e.message || 'שגיאה ביצירת תחליפים.' });
     }
 });
 
