@@ -211,7 +211,7 @@ async function callGemini(systemInstruction, userPrompt) {
     
     try {
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: 'gemini-1.5-flash',
             contents: userPrompt,
             config: {
                 systemInstruction: systemInstruction,
@@ -687,14 +687,14 @@ app.post('/api/generate-alternatives', authenticateToken, async (req, res) => {
         
         let text = "";
         try {
-            const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+            const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
             const result = await model.generateContent([systemPrompt, userPrompt]);
             const response = await result.response;
             text = response.text();
         } catch (primaryError) {
             console.error('Primary model failed, delaying 3s before retry...', primaryError.message);
             await delay(3000);
-            const fallbackModel = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+            const fallbackModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
             const result = await fallbackModel.generateContent([systemPrompt, userPrompt]);
             const response = await result.response;
             text = response.text();
@@ -715,6 +715,9 @@ app.post('/api/generate-alternatives', authenticateToken, async (req, res) => {
         res.json(alternatives);
     } catch (error) {
         console.error('Backend Swap Error:', error);
+        if (error.status === 429 || (error.message && (error.message.includes('429') || error.message.includes('Quota')))) {
+            return res.status(429).json({ error: 'RATE_LIMIT' });
+        }
         res.status(500).json({ error: error.toString() });
     }
 });

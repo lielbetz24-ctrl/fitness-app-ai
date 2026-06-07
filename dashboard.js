@@ -676,7 +676,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         } catch (e) {
             console.error('Error in handleSwapClick:', e);
-            alert(`שגיאה בטעינת החלופות:\n${e.message}`);
+            if (e.message.includes('RATE_LIMIT') || e.message.includes('Status 429')) {
+                alert('מנוע ה-AI בעומס זמני. אנא המתן כדקה ונסה שוב.');
+            } else {
+                alert(`שגיאה בטעינת החלופות:\n${e.message}`);
+            }
         } finally {
             btnEl.innerHTML = originalHtml;
             btnEl.disabled = false;
