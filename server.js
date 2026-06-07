@@ -58,8 +58,9 @@ const userSchema = new mongoose.Schema({
     password: { type: String, required: true },
     isOnboardingCompleted: { type: Boolean, default: false },
     age: Number,
-    gender: String,
+    gender: { type: String, enum: ['male', 'female'] },
     height: Number,
+    measurements: mongoose.Schema.Types.Mixed,
     nutrition_preferences: mongoose.Schema.Types.Mixed, // e.g. { diet, foodPrefs }
     workout_days_per_week: Number,
     meals_per_day: Number,
@@ -224,6 +225,11 @@ async function generateProgramAI(data) {
     2. סדר התרגילים חייב להיות אנליטי: תמיד להתחיל בתרגילים מורכבים כבדים לעבור לתרגילים מורכבים משניים, ורק בסוף לבצע תרגילי בידוד.
     3. חובה לשלב הנחיות ליישום Progressive Overload.
     
+    התאמה מגדרית (Gender Specificity):
+    1. בתזונה (BMR & TDEE): חובה להשתמש במשוואת Mifflin-St Jeor המדויקת המבדילה בין גברים לנשים (לגברים התוצאה מקבלת תוספת של +5, ולנשים מופחת -161).
+    2. בתוכנית האימונים - גברים: אלא אם המשתמש הגדיר מטרה הפוכה במפורש, תן דגש בולט יותר לנפח אימון בפלג הגוף העליון (חזה, גב, כתפיים וידיים), שלב תרגילים מורכבים כבדים לפלג עליון, והתאם זמני מנוחה מספיקים לעצימות.
+    3. בתוכנית האימונים - נשים: אלא אם המשתמשת הגדירה מטרה הפוכה במפורש, תן דגש בולט יותר לפלג הגוף התחתון (ישבן, ירכיים קדמיות ואחוריות) ולשרירי הליבה. יישם נפח אימון מעט גבוה יותר לשרירי הישבן, ונצל את יכולת ההתאוששות המהירה יותר של נשים (מנוחות קצרות יותר, או עבודה בטווחי חזרות מעט גבוהים יותר בתרגילי בידוד).
+
     מבנה ה-JSON המחייב (SCHEMA קשיח - אין לחרוג ממנו, חובה להשתמש במפתחות אלו בדיוק, והערכים בתקציב חייבים להיות מספרים שלמים Int בלבד):
     {
         "schema_version": ${CURRENT_SCHEMA_VERSION},
@@ -275,7 +281,7 @@ async function generateProgramAI(data) {
     return await callGemini(systemPrompt, userPrompt);
 }
 
-async function generateCheckinAI(oldProgram, newTracking, feelings, workoutLogs = []) {
+async function generateCheckinAI(oldProgram, newTracking, feelings, workoutLogs = [], gender = 'male') {
     const systemPrompt = `
     אתה תזונאי קליני ומאמן כושר מקצועי שעוקב אחר מתאמן.
     קבל את נתוני העבר, המשקל החדש ותחושות המתאמן בשבועיים האחרונים.
@@ -289,6 +295,12 @@ async function generateCheckinAI(oldProgram, newTracking, feelings, workoutLogs 
        - שומן (fats): 5g שומן, 1g חלבון, 1.5g פחמימה -> 55 קלוריות למנה.
     2. חישוב תקציב יומי (Daily Budget Math): כשאתה מחשב את מספר המנות היומי של המתאמן (portionBudget), השתמש אך ורק בערכים הקלוריים הנ"ל (80, 125, 55) לחלוקת התקציב, כדי להבטיח שהסך הקלורי יתכנס בדיוק.
     3. חישוב בנק התחליפים (Portion Bank Grams): כמות הגרמים של כל מאכל צריכה לכלול את המאקרו המשולב (שומן נטו בתוך טחינה, פחמימה נטו בתוך אורז וכו').
+
+    התאמה מגדרית (Gender Specificity):
+    1. בתזונה (BMR & TDEE): חובה להשתמש במשוואת Mifflin-St Jeor המדויקת המבדילה בין גברים לנשים (לגברים התוצאה מקבלת תוספת של +5, ולנשים מופחת -161).
+    2. בתוכנית האימונים - גברים: אלא אם המשתמש הגדיר מטרה הפוכה במפורש, תן דגש בולט יותר לנפח אימון בפלג הגוף העליון (חזה, גב, כתפיים וידיים), שלב תרגילים מורכבים כבדים לפלג עליון, והתאם זמני מנוחה מספיקים לעצימות.
+    3. בתוכנית האימונים - נשים: אלא אם המשתמשת הגדירה מטרה הפוכה במפורש, תן דגש בולט יותר לפלג הגוף התחתון (ישבן, ירכיים קדמיות ואחוריות) ולשרירי הליבה. יישם נפח אימון מעט גבוה יותר לשרירי הישבן, ונצל את יכולת ההתאוששות המהירה יותר של נשים (מנוחות קצרות יותר, או עבודה בטווחי חזרות מעט גבוהים יותר בתרגילי בידוד).
+
     החזר אך ורק אובייקט JSON בתבנית הבאה (SCHEMA קשיח, מספרים שלמים בלבד בתקציב):
     {
         "schema_version": ${CURRENT_SCHEMA_VERSION},
@@ -321,6 +333,9 @@ async function generateCheckinAI(oldProgram, newTracking, feelings, workoutLogs 
     `;
 
     const userPrompt = `
+    שים לב! מגדר המתאמן/ת: ${gender === 'male' ? 'זכר' : 'נקבה'}
+    הקפד להחיל את החוקים המגדריים של BMR (משוואת Mifflin) והדגשים בתוכנית האימונים בהתאם למגדר.
+
     נתוני תוכנית קודמת:
     קלוריות: ${oldProgram.target_calories}
     תקציב מנות קודם (JSON חלקי): ${JSON.stringify(oldProgram.portion_budget)}
@@ -424,6 +439,9 @@ app.post('/api/checkin', authenticateToken, cpUpload, async (req, res) => {
             return res.status(404).json({ error: 'תוכנית קודמת לא נמצאה.' });
         }
 
+        const user = await User.findById(userId);
+        const gender = user ? user.gender : 'male';
+
         // Call AI BEFORE touching DB
         let aiCheckin;
         try {
@@ -431,7 +449,8 @@ app.post('/api/checkin', authenticateToken, cpUpload, async (req, res) => {
                 oldProgram, 
                 { weight: parseFloat(data.weight) }, 
                 data.feelings, 
-                oldProgram.workout_logs || []
+                oldProgram.workout_logs || [],
+                gender
             );
         } catch (e) {
             return res.status(500).json({ error: e.message });
