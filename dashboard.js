@@ -40,7 +40,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const measurementLabels = {
                     neck: 'צוואר',
                     chest: 'חזה',
-                    arms: 'ידיים',
+                    arms: 'זרועות',
                     waist: 'מותניים',
                     hips: 'אגן/ישבן',
                     thighs: 'ירכיים'
@@ -62,15 +62,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (cMeasurementsContainer) {
                     if (data.gender === 'male') {
                         cMeasurementsContainer.innerHTML = `
-                            <div class="input-group"><label>צוואר</label><input type="number" name="c_neck" step="0.1" required></div>
+                            <div class="input-group"><label>צוואר</label><input type="number" name="c_neck" step="0.1" placeholder="מתחת לגרוגרת, מצב רפוי" required></div>
                             <div class="input-group"><label>חזה</label><input type="number" name="c_chest" step="0.1" required></div>
-                            <div class="input-group"><label>ידיים</label><input type="number" name="c_arms" step="0.1" required></div>
-                            <div class="input-group"><label>מותניים</label><input type="number" name="c_waist" step="0.1" required></div>
+                            <div class="input-group"><label>זרועות</label><input type="number" name="c_arms" step="0.1" placeholder="מצב מכווץ, בנקודה הרחבה ביותר" required></div>
+                            <div class="input-group"><label>מותניים</label><input type="number" name="c_waist" step="0.1" placeholder="בקו הפופיק, ללא הכנסת בטן" required></div>
                         `;
                     } else {
                         cMeasurementsContainer.innerHTML = `
-                            <div class="input-group"><label>צוואר</label><input type="number" name="c_neck" step="0.1" required></div>
-                            <div class="input-group"><label>מותניים</label><input type="number" name="c_waist" step="0.1" required></div>
+                            <div class="input-group"><label>צוואר</label><input type="number" name="c_neck" step="0.1" placeholder="מתחת לגרוגרת, מצב רפוי" required></div>
+                            <div class="input-group"><label>מותניים</label><input type="number" name="c_waist" step="0.1" placeholder="בקו הפופיק, ללא הכנסת בטן" required></div>
                             <div class="input-group"><label>אגן/ישבן</label><input type="number" name="c_hips" step="0.1" required></div>
                             <div class="input-group"><label>ירכיים</label><input type="number" name="c_thighs" step="0.1" required></div>
                         `;

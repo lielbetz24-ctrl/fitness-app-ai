@@ -23,30 +23,30 @@ document.addEventListener('DOMContentLoaded', () => {
             measurementsContainer.innerHTML = `
                 <div class="input-group">
                     <label for="neck">צוואר</label>
-                    <input type="number" id="neck" name="m_neck" step="0.1" required>
+                    <input type="number" id="neck" name="m_neck" step="0.1" placeholder="מתחת לגרוגרת, מצב רפוי" required>
                 </div>
                 <div class="input-group">
                     <label for="chest">חזה</label>
                     <input type="number" id="chest" name="m_chest" step="0.1" required>
                 </div>
                 <div class="input-group">
-                    <label for="arms">ידיים</label>
-                    <input type="number" id="arms" name="m_arms" step="0.1" required>
+                    <label for="arms">זרועות</label>
+                    <input type="number" id="arms" name="m_arms" step="0.1" placeholder="מצב מכווץ, בנקודה הרחבה ביותר" required>
                 </div>
                 <div class="input-group">
                     <label for="waist">מותניים</label>
-                    <input type="number" id="waist" name="m_waist" step="0.1" required>
+                    <input type="number" id="waist" name="m_waist" step="0.1" placeholder="בקו הפופיק, ללא הכנסת בטן" required>
                 </div>
             `;
         } else {
             measurementsContainer.innerHTML = `
                 <div class="input-group">
                     <label for="neck">צוואר</label>
-                    <input type="number" id="neck" name="m_neck" step="0.1" required>
+                    <input type="number" id="neck" name="m_neck" step="0.1" placeholder="מתחת לגרוגרת, מצב רפוי" required>
                 </div>
                 <div class="input-group">
                     <label for="waist">מותניים</label>
-                    <input type="number" id="waist" name="m_waist" step="0.1" required>
+                    <input type="number" id="waist" name="m_waist" step="0.1" placeholder="בקו הפופיק, ללא הכנסת בטן" required>
                 </div>
                 <div class="input-group">
                     <label for="hips">אגן/ישבן</label>
