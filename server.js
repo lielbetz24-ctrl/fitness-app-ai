@@ -670,6 +670,69 @@ app.get('/api/user/me', authenticateToken, async (req, res) => {
     }
 });
 
+app.post('/api/generate-alternatives', authenticateToken, async (req, res) => {
+    try {
+        const { exerciseName, targetMuscle } = req.body;
+        if (!exerciseName || !targetMuscle) {
+            return res.status(400).json({ error: 'חסרים נתוני תרגיל או שריר מטרה.' });
+        }
+
+        const systemPrompt = `אתה מאמן כושר עלית. עליך להחזיר אך ורק מערך JSON בפורמט: [{"name": "...", "description": "...", "targetMuscle": "..."}]`;
+        const userPrompt = `המשתמש רוצה להחליף את התרגיל "${exerciseName}" שעובד על ${targetMuscle}. ספק 3 תרגילים חלופיים שעובדים על אותו שריר מטרה, בעצימות וביומכניקה דומות (למשל, לחיצה תמורת לחיצה). החזר אך ורק מערך JSON בפורמט: [{"name": "...", "description": "...", "targetMuscle": "..."}]`;
+
+        const responseText = await callGemini(systemPrompt, userPrompt);
+        const alternatives = JSON.parse(responseText);
+        res.json(alternatives);
+    } catch (e) {
+        console.error("Generate alternatives error:", e);
+        res.status(500).json({ error: 'שגיאה ביצירת תחליפים.' });
+    }
+});
+
+app.post('/api/save-exercise-swap', authenticateToken, async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const { dayTitle, oldExerciseName, newExerciseName, newExerciseDetails } = req.body;
+        
+        if (!dayTitle || !oldExerciseName || !newExerciseName) {
+             return res.status(400).json({ error: 'חסרים נתונים חובה לשמירה.' });
+        }
+
+        const program = await Program.findOne({ user_id: userId, is_active: true });
+        if (!program) return res.status(404).json({ error: 'לא נמצאה תוכנית פעילה.' });
+
+        let updated = false;
+        if (program.workout_plan && Array.isArray(program.workout_plan)) {
+            for (let day of program.workout_plan) {
+                if (day.title === dayTitle || day.day === dayTitle) {
+                    for (let ex of day.exercises) {
+                        if (ex.name === oldExerciseName) {
+                            ex.name = newExerciseName;
+                            if (newExerciseDetails) {
+                                ex.details = newExerciseDetails;
+                            }
+                            updated = true;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        if (!updated) {
+            return res.status(404).json({ error: 'התרגיל המקורי או האימון לא נמצאו בתוכנית.' });
+        }
+
+        program.markModified('workout_plan');
+        await program.save();
+
+        res.json({ message: 'התרגיל הוחלף ונשמר בהצלחה!', workoutPlan: program.workout_plan });
+    } catch (e) {
+        console.error("Save exercise swap error:", e);
+        res.status(500).json({ error: 'שגיאה בשמירת התרגיל המוחלף.' });
+    }
+});
+
 app.use('/uploads', express.static(uploadDir));
 app.use(express.static(path.join(__dirname)));
 
