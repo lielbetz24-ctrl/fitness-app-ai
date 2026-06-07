@@ -681,6 +681,8 @@ app.post('/api/generate-alternatives', authenticateToken, async (req, res) => {
         const userPrompt = `המשתמש נמצא באימון מסוג: ${targetMuscle || 'כללי'}. הוא מעוניין להחליף את התרגיל ${exerciseName}. ספק 3 תרגילים חלופיים מאותה משפחת תנועה ובעצימות זהה, שיתאימו לאימון זה. החזר אך ורק מערך JSON חוקי במבנה: [{"name": "...", "description": "..."}]. ללא מילות הקדמה.`;
 
         // איתחול בטוח
+        const { GoogleGenerativeAI } = require('@google/generative-ai');
+        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
         const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
         const result = await model.generateContent([systemPrompt, userPrompt]);
         const response = await result.response;
