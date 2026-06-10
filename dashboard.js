@@ -214,6 +214,33 @@ document.addEventListener('DOMContentLoaded', async () => {
                             });
                         }
 
+                        // Regenerate Nutrition Plan
+                        const btnRegenerate = document.getElementById('btn-regenerate-nutrition');
+                        if (btnRegenerate) {
+                            btnRegenerate.addEventListener('click', async () => {
+                                btnRegenerate.innerHTML = '<span class="spinner" style="display:inline-block; width:16px; height:16px; border:2px solid #fff; border-top-color:transparent; border-radius:50%; animation:spin 1s linear infinite;"></span> מעדכן תפריט...';
+                                btnRegenerate.disabled = true;
+                                try {
+                                    const regenRes = await fetch('/api/regenerate-nutrition', {
+                                        method: 'POST',
+                                        headers: { 'Authorization': `Bearer ${token}` }
+                                    });
+                                    if (regenRes.ok) {
+                                        window.location.reload();
+                                    } else {
+                                        const errData = await regenRes.json();
+                                        alert('שגיאה בעדכון התפריט: ' + (errData.error || 'נסה שוב'));
+                                        btnRegenerate.innerHTML = '🔄 עדכן תפריט לגרסה החדשה';
+                                        btnRegenerate.disabled = false;
+                                    }
+                                } catch (e) {
+                                    alert('שגיאת רשת. נסה שוב.');
+                                    btnRegenerate.innerHTML = '🔄 עדכן תפריט לגרסה החדשה';
+                                    btnRegenerate.disabled = false;
+                                }
+                            });
+                        }
+
                         // Render Exchange Lists
                         const bank = JSON.parse(data.portion_bank);
                         const defs = data.portion_definitions ? JSON.parse(data.portion_definitions) : null;

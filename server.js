@@ -491,6 +491,50 @@ app.post('/api/onboarding', authenticateToken, cpUpload, async (req, res) => {
     }
 });
 
+app.post('/api/regenerate-nutrition', authenticateToken, async (req, res) => {
+    try {
+        const userId = req.user.id;
+        
+        const user = await User.findById(userId);
+        if (!user) return res.status(404).json({ error: 'משתמש לא נמצא.' });
+        
+        const latestTracking = await BiweeklyTracking.findOne({ user_id: userId }).sort({ created_at: -1 });
+        if (!latestTracking) return res.status(404).json({ error: 'לא נמצאו נתוני משקל.' });
+        
+        const data = {
+            height: user.height,
+            weight: latestTracking.weight,
+            gender: user.gender,
+            diet: user.nutrition_preferences ? user.nutrition_preferences.diet : 'ללא',
+            'food-prefs': user.nutrition_preferences ? user.nutrition_preferences.foodPrefs : '',
+            'workout-days': user.workout_days_per_week,
+            'visual-goals': user.visual_goals
+        };
+        const calculatedBodyFat = latestTracking.calculatedBodyFat;
+
+        const aiProgram = await generateProgramAI(data, calculatedBodyFat);
+        
+        const activeProgram = await Program.findOne({ user_id: userId, is_active: true });
+        if (!activeProgram) return res.status(404).json({ error: 'לא קיימת תוכנית פעילה.' });
+
+        activeProgram.target_calories = aiProgram.targetCalories;
+        activeProgram.protein_grams = aiProgram.proteinGrams;
+        activeProgram.carbs_grams = aiProgram.carbsGrams;
+        activeProgram.fats_grams = aiProgram.fatsGrams;
+        activeProgram.portion_budget = aiProgram.portionBudget;
+        activeProgram.portion_bank = aiProgram.portionBank;
+        activeProgram.portion_definitions = aiProgram.portion_definitions;
+        activeProgram.schema_version = aiProgram.schema_version || CURRENT_SCHEMA_VERSION;
+        
+        await activeProgram.save();
+
+        return res.status(200).json({ message: 'התפריט חושב מחדש בהצלחה' });
+    } catch (error) {
+        console.error("Server error during nutrition regeneration:", error);
+        res.status(500).json({ error: 'שגיאה ביצירת התפריט מחדש. נסה שוב מאוחר יותר.' });
+    }
+});
+
 app.post('/api/checkin', authenticateToken, cpUpload, async (req, res) => {
     try {
         const data = req.body;
