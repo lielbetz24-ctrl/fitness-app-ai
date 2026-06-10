@@ -581,11 +581,22 @@ app.post('/api/regenerate-nutrition', authenticateToken, async (req, res) => {
         // איתחול בטוח של ה-AI
         const { GoogleGenerativeAI } = require('@google/generative-ai');
         const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-
-        const result = await model.generateContent([systemPrompt, userPrompt]);
-        const response = await result.response;
-        let text = response.text();
+        const delay = ms => new Promise(res => setTimeout(res, ms));
+        
+        let text = "";
+        try {
+            const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+            const result = await model.generateContent([systemPrompt, userPrompt]);
+            const response = await result.response;
+            text = response.text();
+        } catch (primaryError) {
+            console.error('Primary model failed, delaying 3s before retry...', primaryError.message);
+            await delay(3000);
+            const fallbackModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
+            const result = await fallbackModel.generateContent([systemPrompt, userPrompt]);
+            const response = await result.response;
+            text = response.text();
+        }
 
         // ניקוי התשובה מ-Gemini
         let cleanText = text.replace(/```json/gi, '').replace(/```/g, '').trim();
@@ -614,6 +625,9 @@ app.post('/api/regenerate-nutrition', authenticateToken, async (req, res) => {
         return res.status(200).json({ message: 'התפריט חושב מחדש בהצלחה' });
     } catch (error) {
         console.error("Server error during nutrition regeneration:", error);
+        if (error.status === 429 || (error.message && (error.message.includes('429') || error.message.includes('Quota')))) {
+            return res.status(429).json({ error: 'RATE_LIMIT' });
+        }
         res.status(500).json({ error: error.message, stack: error.stack });
     }
 });

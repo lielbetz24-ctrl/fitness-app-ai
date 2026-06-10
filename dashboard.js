@@ -229,7 +229,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                                         window.location.reload();
                                     } else {
                                         const errData = await regenRes.json();
-                                        alert('שגיאה בעדכון התפריט: ' + (errData.error || 'נסה שוב'));
+                                        if (regenRes.status === 429 || errData.error === 'RATE_LIMIT') {
+                                            alert('המערכת כרגע בעומס, אנא המתן מספר שניות ונסה שוב');
+                                        } else {
+                                            alert('שגיאה בעדכון התפריט: ' + (errData.error || 'נסה שוב'));
+                                        }
                                         btnRegenerate.innerHTML = '🔄 עדכן תפריט לגרסה החדשה';
                                         btnRegenerate.disabled = false;
                                     }
