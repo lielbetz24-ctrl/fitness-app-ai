@@ -501,18 +501,101 @@ app.post('/api/regenerate-nutrition', authenticateToken, async (req, res) => {
         const latestTracking = await BiweeklyTracking.findOne({ user_id: userId }).sort({ created_at: -1 });
         if (!latestTracking) return res.status(404).json({ error: 'לא נמצאו נתוני משקל.' });
         
-        const data = {
-            height: user.height,
-            weight: latestTracking.weight,
-            gender: user.gender,
-            diet: user.nutrition_preferences ? user.nutrition_preferences.diet : 'ללא',
-            'food-prefs': user.nutrition_preferences ? user.nutrition_preferences.foodPrefs : '',
-            'workout-days': user.workout_days_per_week,
-            'visual-goals': user.visual_goals
-        };
         const calculatedBodyFat = latestTracking.calculatedBodyFat;
 
-        const aiProgram = await generateProgramAI(data, calculatedBodyFat);
+        const systemPrompt = `
+        אתה תזונאי קליני ומאמן כושר מקצועי ברמת עלית.
+        תפקידך לייצר תוכנית תזונה מותאמת אישית, מפורטת ומדויקת בעברית.
+        עליך להחזיר אך ורק אובייקט JSON תקין (ללא כל Markdown וללא שום טקסט מילולי לפני או אחרי האובייקט).
+        
+        חוקי תזונה מוחלטים - מעבר ל'בנק מנות' (Exchange Lists):
+        1. ביטול ארוחות קבועות: חל איסור לייצר תפריט המכיל ארוחות מסודרות לפי זמנים.
+        2. קיבוע הגדרת המנות (Hardcoded Definitions) - הערכים למנה:
+           - פחמימה (carbs): 15g פחמימה, 3g חלבון, 1g שומן -> 80 קלוריות.
+           - חלבון (protein): 20g חלבון, 5g שומן, 0g פחמימה -> 125 קלוריות.
+           - שומן (fats): 5g שומן, 1g חלבון, 1.5g פחמימה -> 55 קלוריות.
+        3. חישוב תקציב יומי: חשב מנות אך ורק לפי 80, 125, 55 קלוריות להתכנסות לסך הקלורי.
+        4. פריטים משתנים: עבור פריטים מורכבים כמו לחם, ציין שפרוסה שווה למנה אחת.
+        5. קיבוע עוגני פירות בשרת (Hardcoded Fruit Categories):
+           - קבוצה א' (צפיפות גבוהה): בננה, תמרים, פירות יבשים, ענבים. מנת פחמימה תוגדר כ-70-80 גרם פרי.
+           - קבוצה ב' (צפיפות בינונית): תפוח, אגס, אפרסק, מנגו, תפוז, קלמנטינה, שזיף, אוכמניות. מנת פחמימה תוגדר כ-100-150 גרם פרי (אוכמניות 100 גרם).
+           - קבוצה ג' (צפיפות נמוכה/מים): תותים, אבטיח, מלון, פטל. מנת פחמימה תוגדר כ-200-250 גרם פרי.
+        6. אכיפת רינדור בבנק התחליפים: חובה לשלב נציגים מכל שלוש קבוצות הפירות הנ"ל בתוך בנק הפחמימות, עם המשקל המדויק.
+        7. חוק משקל מוכן לאכילה (Cooked Weight Only): המודל יחשב ויציג את כל משקלי המזון בגרמים בתפריטים ובבנק התחליפים אך ורק לפי משקל המזון לאחר בישול / אפייה.
+           - חלבונים מהחי מבושלים: מנת חלבון אחת מוגדרת כ-50 גרם מבושל.
+           - פחמימות מבושלות (אורז, פסטה): מנת פחמימה אחת מוגדרת כ-50 עד 60 גרם מבושל (כ-3 כפות).
+           - תפוחי אדמה ובטטה: 70 עד 80 גרם מבושל/אפוי למנה.
+        8. סינון איכות חלבון (High-Quality Protein Only): התעלם מ-Trace Protein. ספור חלבון אך ורק ממקורות חלבון מלא. חמאת בוטנים וטחינה יעלו בבנק השומן בלבד.
+        9. חוק העלות הכפולה (Composite Portions): קזז מאכלים מורכבים במקביל לפי המפתח הבא:
+           - ביצה שלמה L: 0.5 מנת חלבון + 1 מנת שומן.
+           - חלבון ביצה L: 0.25 מנת חלבון (0 שומן).
+           - סלמון מבושל (100 גרם): 2 חלבון + 2.5 שומן.
+           - בקר טחון 15% (100 גרם): 2 חלבון + 3.5 שומן.
+           - אדממה (100 גרם): 1 פחמימה + 0.5 חלבון.
+        10. הנגשה ושקיפות: הצג 'תג מחיר' מלא בסוגריים למאכלים משולבים. הוסף הערה בראש התפריט שכל המשקלים הם לאחר בישול.
+
+        התאמה מגדרית (Gender Specificity):
+        1. חובה להשתמש במשוואת קאץ'-מקרדל (Katch-McArdle) המבוססת על מסת גוף רזה.
+        2. רצפת בטיחות קלורית: חל איסור מוחלט לייצר תפריט מתחת ל-1,200 לנשים (או BMR). לגברים הרצפה היא 1,500.
+        3. יחס מאקרו: נשים יחס שומן גבוה יותר (30%-35%). גברים יותר פחמימות. יעד חלבון לשניהם: 1.8g-2.2g לק"ג.
+
+        מבנה ה-JSON המחייב (מספרים שלמים בלבד בתקציב):
+        {
+            "schema_version": ${CURRENT_SCHEMA_VERSION},
+            "targetCalories": <מספר שלם>,
+            "proteinGrams": <מספר שלם>,
+            "carbsGrams": <מספר שלם>,
+            "fatsGrams": <מספר שלם>,
+            "portionBudget": {
+                "carbs": <מספר שלם>,
+                "protein": <מספר שלם>,
+                "fats": <מספר שלם>
+            },
+            "portion_definitions": {
+                "carbs": { "calories": 80, "grams": 15 },
+                "protein": { "calories": 125, "grams": 20 },
+                "fats": { "calories": 55, "grams": 5 }
+            },
+            "portionBank": {
+                "carbs": [ { "name": "שם הפריט", "amount": "כמות בגרמים השווה למנה" } ],
+                "protein": [ { "name": "שם הפריט", "amount": "כמות בגרמים השווה למנה" } ],
+                "fats": [ { "name": "שם הפריט", "amount": "כמות בגרמים השווה למנה" } ]
+            }
+        }
+        `;
+
+        const userPrompt = `
+        פרטי מתאמן לעדכון תזונה:
+        גיל: ${user.age || 'לא צוין'}
+        מגדר: ${user.gender === 'male' ? 'זכר' : 'נקבה'}
+        גובה: ${user.height} ס"מ
+        משקל אחרון: ${latestTracking.weight} ק"ג
+        אחוז שומן מדויק: ${calculatedBodyFat !== null ? calculatedBodyFat + '%' : 'לא ידוע'}
+        העדפה תזונתית: ${user.nutrition_preferences ? user.nutrition_preferences.diet : 'ללא'}
+        מאכלים/העדפות: ${user.nutrition_preferences ? user.nutrition_preferences.foodPrefs : 'ללא'}
+        מטרות ויזואליות: ${user.visual_goals || 'שיפור כללי'}
+        
+        הפק את תוכנית התזונה ב-JSON תקין כעת.
+        `;
+
+        // איתחול בטוח של ה-AI
+        const { GoogleGenerativeAI } = require('@google/generative-ai');
+        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+
+        const result = await model.generateContent([systemPrompt, userPrompt]);
+        const response = await result.response;
+        let text = response.text();
+
+        // ניקוי התשובה מ-Gemini
+        let cleanText = text.replace(/```json/gi, '').replace(/```/g, '').trim();
+        const firstBrace = cleanText.indexOf('{');
+        const lastBrace = cleanText.lastIndexOf('}');
+        if (firstBrace !== -1 && lastBrace !== -1) {
+            cleanText = cleanText.substring(firstBrace, lastBrace + 1);
+        }
+
+        const aiProgram = JSON.parse(cleanText);
         
         const activeProgram = await Program.findOne({ user_id: userId, is_active: true });
         if (!activeProgram) return res.status(404).json({ error: 'לא קיימת תוכנית פעילה.' });
@@ -531,7 +614,7 @@ app.post('/api/regenerate-nutrition', authenticateToken, async (req, res) => {
         return res.status(200).json({ message: 'התפריט חושב מחדש בהצלחה' });
     } catch (error) {
         console.error("Server error during nutrition regeneration:", error);
-        res.status(500).json({ error: 'שגיאה ביצירת התפריט מחדש. נסה שוב מאוחר יותר.' });
+        res.status(500).json({ error: error.message, stack: error.stack });
     }
 });
 
