@@ -217,13 +217,52 @@ document.addEventListener('DOMContentLoaded', async () => {
                         // Regenerate Nutrition Plan
                         const btnRegenerate = document.getElementById('btn-regenerate-nutrition');
                         if (btnRegenerate) {
-                            btnRegenerate.addEventListener('click', async () => {
-                                btnRegenerate.innerHTML = '<span class="spinner" style="display:inline-block; width:16px; height:16px; border:2px solid #fff; border-top-color:transparent; border-radius:50%; animation:spin 1s linear infinite;"></span> מעדכן תפריט...';
+                            let isUpdateNeeded = false;
+                            let updateType = 'system'; // Default
+                            
+                            const sysMenuVersion = data.CURRENT_SYSTEM_MENU_VERSION || 1;
+                            const userMenuVersion = data.menuVersion || 1;
+                            const requiresMenuUpdate = data.requiresMenuUpdate || false;
+
+                            if (requiresMenuUpdate) {
+                                isUpdateNeeded = true;
+                                updateType = 'biometric';
+                            } else if (userMenuVersion < sysMenuVersion) {
+                                isUpdateNeeded = true;
+                                updateType = 'system';
+                            }
+
+                            if (isUpdateNeeded) {
+                                btnRegenerate.disabled = false;
+                                btnRegenerate.innerHTML = 'עדכון תפריט נדרש 🔄';
+                                btnRegenerate.classList.add('btn-pulse');
+                                btnRegenerate.style.opacity = '1';
+                                btnRegenerate.style.cursor = 'pointer';
+                            } else {
                                 btnRegenerate.disabled = true;
+                                btnRegenerate.innerHTML = 'התפריט מעודכן לגרסה האחרונה ✔️';
+                                btnRegenerate.classList.remove('btn-pulse');
+                                btnRegenerate.style.opacity = '0.5';
+                                btnRegenerate.style.cursor = 'not-allowed';
+                            }
+
+                            // Clean existing event listeners by cloning
+                            const newBtnRegenerate = btnRegenerate.cloneNode(true);
+                            btnRegenerate.parentNode.replaceChild(newBtnRegenerate, btnRegenerate);
+
+                            newBtnRegenerate.addEventListener('click', async () => {
+                                if (!isUpdateNeeded) return;
+                                
+                                newBtnRegenerate.innerHTML = '<span class="spinner" style="display:inline-block; width:16px; height:16px; border:2px solid #fff; border-top-color:transparent; border-radius:50%; animation:spin 1s linear infinite;"></span> מעדכן תפריט...';
+                                newBtnRegenerate.disabled = true;
                                 try {
                                     const regenRes = await fetch('/api/regenerate-nutrition', {
                                         method: 'POST',
-                                        headers: { 'Authorization': `Bearer ${token}` }
+                                        headers: { 
+                                            'Authorization': `Bearer ${token}`,
+                                            'Content-Type': 'application/json'
+                                        },
+                                        body: JSON.stringify({ updateType: updateType })
                                     });
                                     if (regenRes.ok) {
                                         window.location.reload();
@@ -234,13 +273,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                                         } else {
                                             alert('שגיאה בעדכון התפריט: ' + (errData.error || 'נסה שוב'));
                                         }
-                                        btnRegenerate.innerHTML = '🔄 עדכן תפריט לגרסה החדשה';
-                                        btnRegenerate.disabled = false;
+                                        newBtnRegenerate.innerHTML = 'עדכון תפריט נדרש 🔄';
+                                        newBtnRegenerate.disabled = false;
                                     }
                                 } catch (e) {
                                     alert('שגיאת רשת. נסה שוב.');
-                                    btnRegenerate.innerHTML = '🔄 עדכן תפריט לגרסה החדשה';
-                                    btnRegenerate.disabled = false;
+                                    newBtnRegenerate.innerHTML = 'עדכון תפריט נדרש 🔄';
+                                    newBtnRegenerate.disabled = false;
                                 }
                             });
                         }

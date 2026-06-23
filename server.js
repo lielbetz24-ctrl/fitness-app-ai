@@ -9,7 +9,7 @@ const { GoogleGenAI } = require('@google/genai');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 
-const app = express();
+\nconst CURRENT_SYSTEM_MENU_VERSION = 2;
 const PORT = process.env.PORT || 3000;
 
 app.use(cors());
@@ -65,6 +65,8 @@ const userSchema = new mongoose.Schema({
     workout_days_per_week: Number,
     meals_per_day: Number,
     visual_goals: String,
+    requiresMenuUpdate: { type: Boolean, default: false },
+    menuVersion: { type: Number, default: 1 },
     created_at: { type: Date, default: Date.now }
 });
 
@@ -641,16 +643,34 @@ app.post('/api/regenerate-nutrition', authenticateToken, async (req, res) => {
         const activeProgram = await Program.findOne({ user_id: userId, is_active: true });
         if (!activeProgram) return res.status(404).json({ error: 'לא קיימת תוכנית פעילה.' });
 
-        activeProgram.target_calories = aiProgram.targetCalories;
-        activeProgram.protein_grams = aiProgram.proteinGrams;
-        activeProgram.carbs_grams = aiProgram.carbsGrams;
-        activeProgram.fats_grams = aiProgram.fatsGrams;
-        activeProgram.portion_budget = aiProgram.portionBudget;
-        activeProgram.portion_bank = aiProgram.portionBank;
-        activeProgram.portion_definitions = aiProgram.portion_definitions;
-        activeProgram.schema_version = aiProgram.schema_version || CURRENT_SCHEMA_VERSION;
-        
+        const updateType = req.body.updateType || 'biometric'; // Default biometric just in case
+
+        if (updateType === 'system') {
+            // Only update the portion bank, keep old targets
+            activeProgram.portion_bank = aiProgram.portionBank;
+            activeProgram.portion_definitions = aiProgram.portion_definitions;
+            activeProgram.schema_version = aiProgram.schema_version || CURRENT_SCHEMA_VERSION;
+            // Calories and budgets remain unchanged
+        } else {
+            // biometric: update everything
+            activeProgram.target_calories = aiProgram.targetCalories;
+            activeProgram.protein_grams = aiProgram.proteinGrams;
+            activeProgram.carbs_grams = aiProgram.carbsGrams;
+            activeProgram.fats_grams = aiProgram.fatsGrams;
+            activeProgram.portion_budget = aiProgram.portionBudget;
+            activeProgram.portion_bank = aiProgram.portionBank;
+            activeProgram.portion_definitions = aiProgram.portion_definitions;
+            activeProgram.schema_version = aiProgram.schema_version || CURRENT_SCHEMA_VERSION;
+        }
+
         await activeProgram.save();
+
+        const currentUser = await User.findById(userId);
+        if (currentUser) {
+            currentUser.requiresMenuUpdate = false;
+            currentUser.menuVersion = CURRENT_SYSTEM_MENU_VERSION;
+            await currentUser.save();
+        }
 
         return res.status(200).json({ message: 'התפריט חושב מחדש בהצלחה' });
     } catch (error) {
@@ -679,6 +699,10 @@ app.post('/api/checkin', authenticateToken, cpUpload, async (req, res) => {
         }
 
         const user = await User.findById(userId);
+        if (user) {
+            user.requiresMenuUpdate = true;
+            await user.save();
+        }
         const gender = user ? user.gender : 'male';
         const height = user ? user.height : null;
 
@@ -851,7 +875,10 @@ app.get('/api/user/me', authenticateToken, async (req, res) => {
             portion_definitions: program && program.portion_definitions ? JSON.stringify(program.portion_definitions) : null,
             workout_plan: program && program.workout_plan ? JSON.stringify(program.workout_plan) : null,
             cardio_and_neat: program && program.cardio_and_neat ? JSON.stringify(program.cardio_and_neat) : null,
-            ai_feedback: program ? program.ai_feedback : null
+            ai_feedback: program ? program.ai_feedback : null,
+            requiresMenuUpdate: user.requiresMenuUpdate,
+            menuVersion: user.menuVersion,
+            CURRENT_SYSTEM_MENU_VERSION: CURRENT_SYSTEM_MENU_VERSION
         };
         
         res.json(result);
