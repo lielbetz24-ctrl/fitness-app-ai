@@ -8,8 +8,8 @@ const mongoose = require('mongoose');
 const { GoogleGenAI } = require('@google/genai');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
-
-\nconst CURRENT_SYSTEM_MENU_VERSION = 2;
+const app = express();
+const CURRENT_SYSTEM_MENU_VERSION = 2;
 const PORT = process.env.PORT || 3000;
 
 app.use(cors());
